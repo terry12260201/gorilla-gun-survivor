@@ -1,0 +1,21 @@
+{
+  "name": "gorilla-gun-survivor-web",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "preview": "vite preview",
+    "convert:assets": "node tools/convert-fbx.mjs"
+  },
+  "dependencies": {
+    "three": "^0.163.0"
+  },
+  "devDependencies": {
+    "@types/three": "^0.163.0",
+    "fbx2gltf": "^0.9.7",
+    "typescript": "^5.4.0",
+    "vite": "^5.2.0"
+  }
+}

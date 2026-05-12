@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Gorilla Gun Survivor — Web Prototype</title>
+    <style>
+      html, body { margin: 0; padding: 0; height: 100%; background: #111; color: #eee; font-family: system-ui, sans-serif; overflow: hidden; }
+      #app { position: fixed; inset: 0; }
+      #app canvas { display: block; }
+      body.playing #app canvas { cursor: none; }
+      #lock-hint {
+        position: fixed; inset: 0; display: flex; align-items: center; justify-content: center;
+        background: rgba(0,0,0,0.55); z-index: 10; cursor: pointer; user-select: none;
+        font-size: 18px; letter-spacing: 0.5px;
+      }
+      #lock-hint.hidden { display: none; }
+      #hud {
+        position: fixed; left: 16px; top: 12px; z-index: 5; font-size: 13px; line-height: 1.5;
+        background: rgba(0,0,0,0.35); padding: 8px 10px; border-radius: 6px; pointer-events: none;
+      }
+      #crosshair {
+        position: fixed; left: 50%; top: 50%; width: 4px; height: 4px;
+        margin: -2px 0 0 -2px; background: #fff; border-radius: 50%; z-index: 5; pointer-events: none;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="app"></div>
+    <div id="hud">
+      <div>Step 09 — 碰撞 / 尾跡 / 火花 / BossBar / 音效 / Essence</div>
+      <div>WASD 移動 · Space 跳 · 左鍵開火 · 滑鼠轉視角 · ESC 暫停 · TAB 看已抽升級</div>
+    </div>
+    <div id="crosshair"></div>
+    <div id="lock-hint">點擊畫面開始（鎖定滑鼠）</div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
