@@ -6,3 +6,7 @@ dist/
 
 # Local Netlify folder
 .netlify
+
+# Generated review frame dumps
+qa/screenshots/gg_pc_0511_frames/
+qa/screenshots/gg_pc_0511_frames2/
