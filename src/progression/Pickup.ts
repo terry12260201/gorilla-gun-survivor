@@ -68,6 +68,10 @@ export class PickupSystem {
     });
   }
 
+  count(kind?: PickupKind): number {
+    return this.items.reduce((sum, it) => sum + (it.alive && (!kind || it.kind === kind) ? 1 : 0), 0);
+  }
+
   update(dt: number, playerPos: THREE.Vector3, onCollect: (kind: PickupKind) => void): void {
     this.time += dt;
     for (let i = this.items.length - 1; i >= 0; i--) {

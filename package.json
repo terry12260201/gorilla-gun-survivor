@@ -5,9 +5,12 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc --noEmit && vite build",
+    "build": "npm run validate:weapons && tsc --noEmit && vite build",
     "preview": "vite preview",
-    "convert:assets": "node tools/convert-fbx.mjs"
+    "convert:assets": "node tools/convert-fbx.mjs",
+    "validate:weapons": "node tools/validate-weapons.mjs",
+    "art:concept": "node tools/art/generate-gpt-image2-concept.mjs",
+    "dashboard:update": "node tools/update-terry-dashboard.mjs"
   },
   "dependencies": {
     "three": "^0.163.0"

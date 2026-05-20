@@ -11,6 +11,14 @@ export interface UpgradeCard {
   rarity: Rarity;
   unique?: boolean;
   canPick?: (game: Game) => boolean;
+  /**
+   * Optional per-card weight override. If returned value is undefined, the
+   * default `RARITY_WEIGHT[rarity]` is used. Returning 0 effectively filters
+   * the card (same as canPick=false). Used for diminishing-returns cards like
+   * `move_speed` that should taper at high stack counts before being fully
+   * filtered.
+   */
+  getWeight?: (game: Game) => number | undefined;
   apply: (game: Game) => void;
 }
 
@@ -45,6 +53,18 @@ export const CARDS: UpgradeCard[] = [
     title: '靈敏爪掌',
     desc: '移動速度 +1.2 m/s',
     rarity: 'common',
+    // Diminishing returns + hard cap per Terry decision (2026-05-19 OPEN-1):
+    // - Picks 1-3: full weight (0.85)
+    // - Picks 4-5: tapered weight (0.20) — still possible but unlikely
+    // - Picks 6+: filtered out entirely (gameplay break: faster than all enemies)
+    // Tracked via `pickedCards.get('move_speed').count` (incremented after apply).
+    canPick: (g) => (g.pickedCards.get('move_speed')?.count ?? 0) < 6,
+    getWeight: (g) => {
+      const count = g.pickedCards.get('move_speed')?.count ?? 0;
+      if (count >= 6) return 0;       // belt + suspenders with canPick
+      if (count >= 4) return 0.2;     // tapered
+      return 0.85;                    // baseline (slightly below other commons)
+    },
     apply: (g) => { g.player.moveSpeed += 1.2; },
   },
   {
@@ -66,6 +86,10 @@ export const CARDS: UpgradeCard[] = [
     title: '喘口氣',
     desc: '立即回復 40 HP',
     rarity: 'common',
+    // Gate: don't show heal card when player is already at full HP.
+    // Avoids the "wasted draw" feel — at full HP this card has zero effect.
+    // Closes openspec/specs/cards/heal.md "Open Questions" #1.
+    canPick: (g) => g.health.hp < g.health.max,
     apply: (g) => { g.health.hp = Math.min(g.health.max, g.health.hp + 40); },
   },
   {
@@ -103,6 +127,11 @@ export const CARDS: UpgradeCard[] = [
     title: '追擊強化',
     desc: '追擊轉向速度 +1.5',
     rarity: 'rare',
+    // Gate: only show this card if player has already enabled homing via the
+    // `homing` card. Otherwise the +1.5 strength has no effect (homing=false
+    // means projectiles ignore homingStrength entirely), which is a trap UX.
+    // Closes openspec/specs/cards/homing_up.md "Open Questions" #1.
+    canPick: (g) => g.projectiles.homing,
     apply: (g) => { g.projectiles.homingStrength += 1.5; },
   },
   {
@@ -179,7 +208,14 @@ export function pickThree(game: Game): UpgradeCard[] {
     if (c.canPick && !c.canPick(game)) return false;
     return true;
   });
-  const weighted = eligible.map((c) => ({ card: c, w: RARITY_WEIGHT[c.rarity] }));
+  const weighted = eligible
+    .map((c) => {
+      // Per-card override wins; fall back to rarity default.
+      const overrideW = c.getWeight ? c.getWeight(game) : undefined;
+      const w = overrideW !== undefined ? overrideW : RARITY_WEIGHT[c.rarity];
+      return { card: c, w };
+    })
+    .filter((e) => e.w > 0); // belt-and-suspenders: 0-weight = filtered
   const out: UpgradeCard[] = [];
   while (out.length < 3 && weighted.length > 0) {
     const total = weighted.reduce((s, e) => s + e.w, 0);

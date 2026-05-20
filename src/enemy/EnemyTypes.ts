@@ -1,7 +1,7 @@
 export type EnemyType =
   | 'grunt' | 'fast' | 'scout' | 'heavy'
   | 'ranged' | 'caster' | 'brute' | 'miniboss'
-  | 'rusher' | 'bomber';
+  | 'rusher' | 'bomber' | 'plasma_bomber_v2';
 
 export interface RangedConfig {
   cooldown: number;        // seconds between shots
@@ -132,15 +132,36 @@ export const ENEMY_TYPES: Record<EnemyType, EnemyTypeData> = {
   },
   bomber: {
     type: 'bomber',
-    placeholder: { geometry: 'sphere', color: 0xff8822, emissive: 0x331100 },
+    url: '/assets/custom/plasma_bomber_v1.glb',
     hp: 40, speed: 2.0, touchDamage: 0, radius: 0.5, height: 1.3,
     bomber: { fuseRange: 3, fuseTime: 1.2, aoeRadius: 3.5, aoeDamage: 25, moveDuringFuse: 0 },
     weight: 0.4, unlockAt: 45, xpTier: 2, xpCount: 1,
     heartDropChance: 0.04, chestDropChance: 0.005,
   },
+  plasma_bomber_v2: {
+    type: 'plasma_bomber_v2',
+    url: '/assets/custom/plasma_bomber_v2.glb',
+    hp: 58, speed: 1.8, touchDamage: 0, radius: 0.55, height: 1.35,
+    bomber: { fuseRange: 3.2, fuseTime: 1.0, aoeRadius: 4.0, aoeDamage: 32, moveDuringFuse: 0 },
+    weight: 0.25, unlockAt: 90, xpTier: 2, xpCount: 2,
+    heartDropChance: 0.05, chestDropChance: 0.01,
+  },
 };
 
+let qaBomberIndex = 0;
+
+function isBomberQaMode(): boolean {
+  return globalThis.location?.search.includes('qaBombers=1') ?? false;
+}
+
 export function pickSpawnType(elapsed: number): EnemyTypeData {
+  if (isBomberQaMode()) {
+    const qaTypes: EnemyType[] = ['bomber', 'plasma_bomber_v2'];
+    const type = qaTypes[qaBomberIndex % qaTypes.length];
+    qaBomberIndex += 1;
+    return ENEMY_TYPES[type];
+  }
+
   const available = Object.values(ENEMY_TYPES).filter((t) => elapsed >= t.unlockAt);
   const totalW = available.reduce((s, t) => s + t.weight, 0);
   let roll = Math.random() * totalW;

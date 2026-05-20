@@ -1,0 +1,10 @@
+{
+  "slug": "plasma-bomber-v1",
+  "model": "gpt-image-2",
+  "size": "1536x1024",
+  "quality": "medium",
+  "outputFormat": "png",
+  "outputDir": "art/concepts",
+  "prompt": "Design a stylized low-poly sci-fi plasma bomber enemy for a top-down survivor shooter game. It should be a small unstable creature-drone hybrid with a round orange plasma core, dark segmented shell plates, short tripod legs, blinking warning nodes, and a fuse-like glow trail that clearly communicates it will explode when close to the player. Create a production reference sheet with front view, side view, 3/4 view, small scale comparison next to the player, and material swatches for shell, plasma core, emissive warning lights, and scorch marks. The silhouette must be readable at small size in a WebGL game and suitable for a low-poly Blender model.",
+  "negativePrompt": "photorealistic monster, gore, real brand logo, tiny unreadable details, text-heavy labels, complex high-poly ornament, humanoid face, cute mascot"
+}

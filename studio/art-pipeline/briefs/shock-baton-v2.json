@@ -1,0 +1,10 @@
+{
+  "slug": "shock-baton-v2",
+  "model": "gpt-image-2",
+  "size": "1536x1024",
+  "quality": "medium",
+  "outputFormat": "png",
+  "outputDir": "art/concepts",
+  "prompt": "Design a stylized low-poly sci-fi electric shock baton weapon for a top-down survivor shooter game. It should look like a compact baton pistol hybrid with a dark metal body, ribbed black grip, purple energy tube, lime glowing electrodes, front coil rings, and clear muzzle nodes. Create a production reference sheet with front view, side view, 3/4 view, and small material swatches. The silhouette must be readable at small size in a WebGL game.",
+  "negativePrompt": "photorealistic gun, real brand logo, tiny unreadable details, text-heavy labels, complex high-poly ornamental shapes"
+}

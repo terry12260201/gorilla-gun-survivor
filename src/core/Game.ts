@@ -32,6 +32,11 @@ import { PausePanel } from '../ui/PausePanel.js';
 import { InventoryPanel } from '../ui/InventoryPanel.js';
 import type { UpgradeCard } from '../progression/UpgradeCards.js';
 
+const AMBIENT_HEART_INTERVAL = 38;
+const RESCUE_HEART_INTERVAL = 14;
+const RESCUE_HEART_HP_PCT = 0.4;
+const MAX_FIELD_HEARTS = 3;
+
 export class Game {
   readonly root: SceneRoot;
   private arena: Arena;
@@ -68,6 +73,8 @@ export class Game {
   private paused = false;
   private pauseSource: 'upgrade' | 'esc' | null = null;
   private gameTime = 0;
+  private ambientHeartTimer = AMBIENT_HEART_INTERVAL;
+  private rescueHeartTimer = RESCUE_HEART_INTERVAL;
 
   constructor(mount: HTMLElement, hint: HTMLElement) {
     this.root = new SceneRoot(mount);
@@ -251,6 +258,7 @@ export class Game {
           },
         );
         this.health.update(dt);
+        this.updateFieldPickups(dt);
         this.lightning.update(dt, this.enemies.enemies);
         this.poison.update(dt, this.enemies.enemies);
         this.enemyProjectiles.update(dt, this.player.position, (dmg) => {
@@ -312,6 +320,42 @@ export class Game {
         this.input.requestLock();
       }
     });
+  }
+
+  private updateFieldPickups(dt: number): void {
+    if (this.pickups.count('heart') >= MAX_FIELD_HEARTS) return;
+
+    this.ambientHeartTimer -= dt;
+    this.rescueHeartTimer -= dt;
+
+    const hpPct = this.health.hp / this.health.max;
+    if (hpPct <= RESCUE_HEART_HP_PCT && this.rescueHeartTimer <= 0) {
+      this.spawnHeartNearPlayer(7, 12);
+      this.rescueHeartTimer = RESCUE_HEART_INTERVAL;
+      this.ambientHeartTimer = Math.max(this.ambientHeartTimer, 8);
+      return;
+    }
+
+    if (this.ambientHeartTimer <= 0) {
+      this.spawnHeartNearPlayer(10, 18);
+      this.ambientHeartTimer = AMBIENT_HEART_INTERVAL;
+    }
+  }
+
+  private spawnHeartNearPlayer(minRadius: number, maxRadius: number): void {
+    const pos = this.player.position.clone();
+    const angle = Math.random() * Math.PI * 2;
+    const radius = minRadius + Math.random() * (maxRadius - minRadius);
+    pos.x += Math.cos(angle) * radius;
+    pos.z += Math.sin(angle) * radius;
+
+    const limit = this.arena.size / 2 - 3;
+    pos.x = Math.max(-limit, Math.min(limit, pos.x));
+    pos.z = Math.max(-limit, Math.min(limit, pos.z));
+    this.arena.resolveCircle(pos, 0.6);
+
+    this.pickups.spawn('heart', pos);
+    this.deathBursts.burst(pos, [1.0, 0.25, 0.35]);
   }
 
   applyMetaUpgrades(meta: MetaData): void {

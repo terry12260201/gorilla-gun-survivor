@@ -1,0 +1,9 @@
+Design a stylized low-poly sci-fi plasma bomber enemy for a top-down survivor shooter game. It should be a small unstable creature-drone hybrid with a round orange plasma core, dark segmented shell plates, short tripod legs, blinking warning nodes, and a fuse-like glow trail that clearly communicates it will explode when close to the player. Create a production reference sheet with front view, side view, 3/4 view, small scale comparison next to the player, and material swatches for shell, plasma core, emissive warning lights, and scorch marks. The silhouette must be readable at small size in a WebGL game and suitable for a low-poly Blender model.
+Game production reference sheet requirements:
+- single asset only, centered, isolated on a plain neutral background
+- include front view, side view, and 3/4 view when possible
+- clear silhouette readable at small size
+- material callouts for Blender modeling and texture work
+- no logos, no UI, no text labels unless requested
+- stylized low-poly friendly form suitable for WebGL game assets
+Avoid: photorealistic monster, gore, real brand logo, tiny unreadable details, text-heavy labels, complex high-poly ornament, humanoid face, cute mascot

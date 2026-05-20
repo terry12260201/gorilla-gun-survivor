@@ -1,0 +1,317 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>大猩猩槍手生存戰 — 目前進度</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Microsoft JhengHei", "Noto Sans TC", system-ui, sans-serif;
+    background: #f4f1e8;
+    color: #1d2020;
+    line-height: 1.7;
+    padding: 30px 20px;
+    max-width: 1000px;
+    margin: 0 auto;
+  }
+  h1 { font-size: 32px; margin-bottom: 8px; }
+  h2 { font-size: 22px; margin: 32px 0 12px; padding-bottom: 6px; border-bottom: 3px solid #1d2020; }
+  h3 { font-size: 17px; margin: 16px 0 6px; color: #5c2ac6; }
+  .lead { font-size: 18px; color: #444; margin-bottom: 8px; }
+  .updated { font-size: 13px; color: #888; margin-bottom: 24px; }
+
+  .now-box {
+    background: #5c2ac6;
+    color: white;
+    padding: 24px 28px;
+    border-radius: 10px;
+    margin: 20px 0 32px;
+  }
+  .now-box h2 { color: white; border-color: rgba(255,255,255,0.4); margin-top: 0; }
+  .now-box p { font-size: 17px; margin-top: 8px; }
+
+  .columns {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 20px;
+    margin: 20px 0;
+  }
+  .column {
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    border-top: 5px solid;
+  }
+  .column.done   { border-top-color: #65a30d; }
+  .column.doing  { border-top-color: #f59e0b; }
+  .column.next   { border-top-color: #5c2ac6; }
+  .column h3 { margin-top: 0; color: inherit; }
+  .column.done h3   { color: #65a30d; }
+  .column.doing h3  { color: #f59e0b; }
+  .column.next h3   { color: #5c2ac6; }
+  .column ul { list-style: none; }
+  .column li {
+    padding: 8px 0;
+    border-bottom: 1px dashed #ddd;
+    font-size: 14px;
+  }
+  .column li:last-child { border-bottom: none; }
+  .tag {
+    display: inline-block;
+    font-size: 11px;
+    padding: 2px 6px;
+    border-radius: 3px;
+    margin-right: 4px;
+    background: #eee;
+    color: #555;
+  }
+
+  .action-box {
+    background: #c3ff3d;
+    border: 3px solid #1d2020;
+    border-radius: 10px;
+    padding: 22px 28px;
+    margin: 24px 0;
+  }
+  .action-box h2 { border-color: #1d2020; margin-top: 0; }
+  .action-box ol { padding-left: 22px; margin-top: 10px; }
+  .action-box li { margin: 8px 0; font-size: 15px; }
+  .action-box code {
+    background: #1d2020;
+    color: #c3ff3d;
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-size: 13px;
+  }
+
+  .numbers {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    margin: 24px 0;
+  }
+  .num-card {
+    background: white;
+    text-align: center;
+    padding: 18px;
+    border-radius: 8px;
+    border: 1px solid #ddd;
+  }
+  .num-card .n {
+    font-size: 36px;
+    font-weight: 900;
+    color: #5c2ac6;
+    display: block;
+    line-height: 1;
+    margin-bottom: 4px;
+  }
+  .num-card .label {
+    font-size: 12px;
+    color: #666;
+  }
+
+  details {
+    background: white;
+    padding: 12px 16px;
+    border-radius: 6px;
+    border: 1px solid #ddd;
+    margin: 8px 0;
+  }
+  details summary {
+    cursor: pointer;
+    font-weight: 700;
+    color: #5c2ac6;
+  }
+  details[open] summary { margin-bottom: 10px; }
+  details p, details li { font-size: 14px; color: #555; }
+
+  @media (max-width: 800px) {
+    .columns { grid-template-columns: 1fr; }
+    .numbers { grid-template-columns: repeat(2, 1fr); }
+  }
+</style>
+</head>
+<body>
+
+<h1>🦍 大猩猩槍手生存戰</h1>
+<p class="lead">這是給 Terry 看的進度頁。三秒看懂現在做到哪。</p>
+<p class="updated">最後更新：2026-05-20 03:30</p>
+
+<!-- 一句話現況 -->
+<div class="now-box">
+  <h2>🎯 現在的狀況</h2>
+  <p>遊戲核心（殺怪、撿東西、升等、抽卡、撐下去）已經能跑了，完成度大約 <strong>35-40%</strong>。
+  最近這幾天我（Claude）把所有遊戲設定都整理成獨立檔案、修了 3 個遊戲 bug、加了 4 條長期升級提案。<br><br>
+  <strong>現在卡在一個地方：你的 Windows 那邊的 git 需要修一下，我才能把這些成果推到 GitHub。</strong>
+  詳見下方「你現在要做的事」。</p>
+</div>
+
+<!-- 數字儀表 -->
+<div class="numbers">
+  <div class="num-card"><span class="n">35-40%</span><span class="label">遊戲好玩度</span></div>
+  <div class="num-card"><span class="n">8</span><span class="label">武器</span></div>
+  <div class="num-card"><span class="n">11</span><span class="label">怪物種類</span></div>
+  <div class="num-card"><span class="n">15</span><span class="label">升級卡</span></div>
+</div>
+
+<!-- 你要做的事（最重要） -->
+<div class="action-box">
+  <h2>👉 你現在要做的事（10 分鐘搞定）</h2>
+  <ol>
+    <li>打開 PowerShell，跑：<br>
+      <code>cd "E:\Project\2026\Gorilla Gun Survivor — Web Edition"</code><br>
+      <code>Remove-Item .git\HEAD.lock,.git\index.lock,.git\objects\maintenance.lock -EA SilentlyContinue</code><br>
+      <code>git read-tree HEAD</code>
+    </li>
+    <li>確認程式碼沒寫壞：<br>
+      <code>npm run build</code>
+    </li>
+    <li>把這幾天的成果一次推到 GitHub：<br>
+      <code>git add -A; git commit -m "claude full update"; git push origin main</code>
+    </li>
+  </ol>
+  <p style="margin-top:14px;font-size:13px;color:#1d2020;">
+    做完之後，我自動排程的助手就能繼續幫你開發。沒做的話我會一直在等。
+  </p>
+</div>
+
+<!-- 三欄：做完 / 在做 / 接下來 -->
+<div class="columns">
+  <div class="column done">
+    <h3>✅ 最近做完</h3>
+    <ul>
+      <li><span class="tag">遊戲</span>修了閃電武器爆雷（電擊堆太多會卡頓）</li>
+      <li><span class="tag">遊戲</span>升等卡池過濾：滿血時不出「回血卡」、沒抽追擊時不出「追擊強化」</li>
+      <li><span class="tag">遊戲</span>「靈敏爪掌」（移動加速）加上限：第 6 次後不再出現</li>
+      <li><span class="tag">設定</span>整理了 90+ 份遊戲規格檔（武器、怪物、元素、地圖、團隊角色全部一份一檔）</li>
+      <li><span class="tag">設定</span>長期升級條 4 條提案完成（鋼鐵之軀、起始火力、磁場本能、第二次機會）</li>
+      <li><span class="tag">設定</span>4 張地圖規劃完成（既有 Arena + 廢墟 / 洞窟 / 霓虹）</li>
+      <li><span class="tag">設定</span>音效預算分配做完（總共 5MB，分配給音樂/音效/UI/語音）</li>
+    </ul>
+  </div>
+
+  <div class="column doing">
+    <h3>⏳ 等你決定 / 確認</h3>
+    <ul>
+      <li><strong>修 git 並 push</strong>（最重要 — 不做我一直卡住）</li>
+      <li>跑遊戲確認電弧短杖視覺改對了（彩色更亮）</li>
+      <li>跑遊戲確認閃電不會爆量、回血卡只在缺血時出現</li>
+    </ul>
+    <p style="font-size:12px;color:#888;margin-top:10px;">
+    這欄空了之後，我才能繼續幫你做新內容。
+    </p>
+  </div>
+
+  <div class="column next">
+    <h3>🔜 接下來要做（依優先序）</h3>
+    <ul>
+      <li><strong>VFX-01 收尾</strong>：電弧短杖加內建電弧鏈、命中閃光（程式碼）</li>
+      <li><strong>QA-03</strong>：你實際玩 Plasma Bomber v1 vs v2，回報哪個剪影比較清楚</li>
+      <li><strong>ENEMY-01</strong>：新行為怪物（盾兵 / 分裂 / 狙擊召喚 三選一）</li>
+      <li>長期：把 META 升級條從規格變成 code（4 條）</li>
+      <li>長期：4 張地圖從 spec 變成可玩場景</li>
+    </ul>
+  </div>
+</div>
+
+<!-- 整體規劃 -->
+<h2>📋 整體規劃（從 prototype 到上架 Steam）</h2>
+<div class="columns" style="grid-template-columns:repeat(5,1fr);gap:10px;">
+  <div class="column done" style="border-top-color:#65a30d;padding:14px;">
+    <h3 style="font-size:14px;">P0 ✅<br>基礎建設</h3>
+    <p style="font-size:12px;color:#666;">部署、log、dashboard — 完成</p>
+  </div>
+  <div class="column done" style="border-top-color:#65a30d;padding:14px;">
+    <h3 style="font-size:14px;">P1 ✅<br>資料化</h3>
+    <p style="font-size:12px;color:#666;">武器/卡/敵人都搬進 JSON + spec — 完成</p>
+  </div>
+  <div class="column doing" style="border-top-color:#f59e0b;padding:14px;">
+    <h3 style="font-size:14px;">P2 ⏳<br>內容擴張</h3>
+    <p style="font-size:12px;color:#666;">新武器、新怪、新地圖 — 進行中</p>
+  </div>
+  <div class="column next" style="border-top-color:#5c2ac6;padding:14px;">
+    <h3 style="font-size:14px;">P3 ⌛<br>平衡測試</h3>
+    <p style="font-size:12px;color:#666;">5/10/15 分鐘玩測校正 — 規劃中</p>
+  </div>
+  <div class="column next" style="border-top-color:#5c2ac6;padding:14px;">
+    <h3 style="font-size:14px;">P4 ⌛<br>美術強化</h3>
+    <p style="font-size:12px;color:#666;">概念圖 → 3D 模型 → 整合</p>
+  </div>
+</div>
+
+<!-- 詳細項目 -->
+<h2>📂 想看細節再展開</h2>
+
+<details>
+<summary>我這 24 小時做了什麼（按時間順序）</summary>
+<ul style="padding-left:20px;margin-top:10px;">
+  <li>18:40 — 把全部 8 把武器、11 種怪物、4 種元素、5 個系統規格各寫成獨立檔案（38 個檔）</li>
+  <li>19:10 — 把 31 位團隊成員的角色描述都寫好（24 個檔）</li>
+  <li>20:45 — Dashboard 加新區塊「規格健康度」、寫升級卡和地圖的模板</li>
+  <li>21:15 — 從 code 反推 18 張既有升級卡的規格（22 個檔，包含動態卡邏輯）</li>
+  <li>22:30 — 修閃電武器爆雷 bug（同時最多 30 條弧線，避免高射速電擊 build 卡死遊戲）</li>
+  <li>22:45 — 寫 4 條長期升級條提案 + 「歡迎回來」briefing</li>
+  <li>23:00 — 修兩個升級卡 UX 陷阱（滿血時不出回血、沒追擊時不出追擊強化）</li>
+  <li>23:30 — 文件化主武器子彈散射角度公式 + 寫 build pipeline 規格</li>
+  <li>03:00（你回來後）— 你拍板：移動速度卡加上限、第二次機會確定要做</li>
+  <li>03:30 — 重寫這個 dashboard 用人話（剛剛這個動作）</li>
+</ul>
+</details>
+
+<details>
+<summary>「規格」是什麼？為什麼要寫這麼多檔？</summary>
+<p>之前的問題：</p>
+<ul style="padding-left:20px;">
+  <li>「電弧短杖」的設定散在 5 個地方（程式碼、設計文件、概念圖、launch brief、Codex 對話）</li>
+  <li>下次要改設定不知道改哪個</li>
+  <li>新 AI 接手不知道之前的設計意圖</li>
+</ul>
+<p>所以我把每個東西都寫成一份獨立 markdown：一把武器一份、一隻怪物一份、一張卡一份、一位團隊成員一份。共 100+ 份檔案，路徑 <code>openspec/</code>。</p>
+<p>好處：之後要改任何東西，AI 跟你都知道去哪改、改了會影響什麼。</p>
+</details>
+
+<details>
+<summary>「修 git」是怎麼回事？</summary>
+<p>我在 Cowork 沙盒裡無法穩定跑 git（mount 限制），所以從 18:40 開始我就只寫檔案、不碰 git。但 git 的索引檔之前被弄亂了，需要你在 Windows 那邊跑幾個指令修一下。</p>
+<p>修完之後，我這 24 小時寫的 100+ 個檔就可以一次推到 GitHub。</p>
+<p>修法在最上面的綠色框，3 步搞定。</p>
+</details>
+
+<details>
+<summary>排程助手是什麼？現在在幹嘛？</summary>
+<p>我設了一個自動任務每 30 分鐘喚醒一個新 Claude 來看狀態、推進工作。它在過去 8-9 小時自動寫了：</p>
+<ul style="padding-left:20px;">
+  <li>3 張地圖規格（廢墟、洞窟、霓虹）</li>
+  <li>音效系統完整預算分配</li>
+  <li>掉落經濟系統規格</li>
+  <li>怪物生成池規格</li>
+  <li>18 張卡的 build 配方圖</li>
+  <li>所有怪物的責任分工補完</li>
+  <li>build pipeline 補充細節</li>
+</ul>
+<p>現在它在 idle 等你修 git。你修完它會自動繼續。</p>
+</details>
+
+<details>
+<summary>所有檔案在哪？</summary>
+<p><strong>給 AI 看的規格</strong>：<code>openspec/</code> — 100+ markdown 檔，按類別分資料夾</p>
+<p><strong>給你看的狀態</strong>：</p>
+<ul style="padding-left:20px;">
+  <li><code>studio/dashboard/terry-progress.html</code> — 本檔（這個 dashboard）</li>
+  <li><code>studio/WELCOME-BACK.md</code> — 你睡醒第一個讀的</li>
+  <li><code>studio/CLAUDE-PENDING-CHANGES.md</code> — 所有待 commit 改動清單</li>
+</ul>
+<p><strong>code</strong>：<code>src/</code> — 遊戲程式碼</p>
+<p><strong>美術概念</strong>：<code>art/</code> — 概念圖、模型 brief、VFX brief</p>
+</details>
+
+<footer style="margin-top:40px;padding-top:20px;border-top:1px solid #ccc;color:#888;font-size:12px;text-align:center;">
+這個頁面手寫，不是自動生成。<br>
+之後我會把 dashboard 生成器（<code>tools/update-terry-dashboard.mjs</code>）也改成這個白話風格。<br>
+如果這個格式 OK，告訴我「就用這個」；不 OK 告訴我哪裡改。
+</footer>
+
+</body>
+</html>
+</content>

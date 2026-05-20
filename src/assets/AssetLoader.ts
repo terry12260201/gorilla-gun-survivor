@@ -27,6 +27,7 @@ function loadTexture(url: string): Promise<THREE.Texture> {
 }
 
 function deriveTextureUrl(glbUrl: string): string {
+  if (glbUrl.startsWith('/assets/custom/')) return '';
   return glbUrl.replace(/\.glb$/i, '.png');
 }
 
@@ -71,7 +72,17 @@ function applyTexture(root: THREE.Object3D, tex: THREE.Texture): void {
 }
 
 export async function loadGltf(url: string, opts?: { texture?: string | null }): Promise<THREE.Group> {
+  if (url.includes('plasma_bomber')) console.info(`[asset] loading ${url}`);
   const gltf = await gltfLoader.loadAsync(resolveAssetUrl(url));
+  if (url.includes('plasma_bomber')) {
+    console.info(`[asset] loaded ${url}`);
+    const root = globalThis.document?.documentElement;
+    if (root) {
+      const loaded = new Set((root.dataset.plasmaAssets ?? '').split(',').filter(Boolean));
+      loaded.add(url);
+      root.dataset.plasmaAssets = [...loaded].join(',');
+    }
+  }
   const scene = gltf.scene;
   upgradeToStandard(scene);
 

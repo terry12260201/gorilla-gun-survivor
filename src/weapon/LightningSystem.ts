@@ -18,6 +18,13 @@ const COLUMN_RADIUS = 0.18;
 
 const CHAIN_FLASH_DURATION = 0.32;
 
+// Hard caps per `openspec/specs/systems/vfx-system.md` — Volt TA discipline.
+// Beyond these caps we evict the oldest (chain) or drop the new request (strike)
+// to avoid runaway draw calls when chain_arc x4 + lightning_strike x5 + shock_baton
+// intrinsic + Lightning element tier 3 all proc in the same frame.
+const MAX_ARCS = 30;
+const MAX_STRIKES = 20;
+
 interface ChainArc {
   lifeAfterFire: number;
   line: THREE.Line;
@@ -29,6 +36,10 @@ export class LightningSystem {
   private arcs: ChainArc[] = [];
 
   constructor(private scene: THREE.Scene) {}
+
+  /** Telemetry: current live counts (read-only). Used by perf overlay / tests. */
+  get arcCount(): number { return this.arcs.length; }
+  get strikeCount(): number { return this.strikes.length; }
 
   /** Draw a chain lightning arc through a sequence of positions, damage each enemy in the chain. */
   chain(startPos: THREE.Vector3, targets: Enemy[], damage = 15): void {
@@ -66,11 +77,30 @@ export class LightningSystem {
     light.position.copy(jittered[midIdx]);
     this.scene.add(light);
 
+    // Eviction: if we'd exceed MAX_ARCS, drop the oldest arc first so the
+    // newest hit always shows. Damage was already applied above, so eviction
+    // only affects visuals (still within the same frame), keeping gameplay
+    // honest while preventing draw-call runaway.
+    if (this.arcs.length >= MAX_ARCS) {
+      const oldest = this.arcs.shift();
+      if (oldest) {
+        this.scene.remove(oldest.line);
+        this.scene.remove(oldest.light);
+        oldest.line.geometry.dispose();
+        (oldest.line.material as THREE.LineBasicMaterial).dispose();
+      }
+    }
+
     this.arcs.push({ lifeAfterFire: CHAIN_FLASH_DURATION, line, light });
   }
 
   /** Single strike at position after optional delay. */
   strike(pos: THREE.Vector3, delay = 0, radius = 3, damage = 20): void {
+    // Cap: if we're already at MAX_STRIKES, drop the new request entirely.
+    // Strikes are pre-spawned visuals + delayed damage; dropping a new one is
+    // safer than evicting an active one mid-flash (would also lose its damage).
+    if (this.strikes.length >= MAX_STRIKES) return;
+
     this.strikes.push({
       pos: pos.clone(),
       delay,
@@ -117,7 +147,12 @@ export class LightningSystem {
       if (s.light) s.light.intensity = 6 * k;
 
       if (s.lifeAfterFire <= 0) {
-        if (s.mesh) this.scene.remove(s.mesh);
+        if (s.mesh) {
+          this.scene.remove(s.mesh);
+          // Dispose to release GPU memory (Volt TA discipline).
+          s.mesh.geometry.dispose();
+          (s.mesh.material as THREE.MeshBasicMaterial).dispose();
+        }
         if (s.light) this.scene.remove(s.light);
         this.strikes.splice(i, 1);
       }
@@ -132,6 +167,9 @@ export class LightningSystem {
       if (a.lifeAfterFire <= 0) {
         this.scene.remove(a.line);
         this.scene.remove(a.light);
+        // Dispose to release GPU memory (Volt TA discipline).
+        a.line.geometry.dispose();
+        (a.line.material as THREE.LineBasicMaterial).dispose();
         this.arcs.splice(i, 1);
       }
     }
