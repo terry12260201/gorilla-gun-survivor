@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import * as SkeletonUtils from 'three/examples/jsm/utils/SkeletonUtils.js';
 import { loadGltf } from '../assets/AssetLoader.js';
 import { Enemy, type ExplosionPayload } from './Enemy.js';
-import type { ProjectilePool, ElementPayload } from '../weapon/Projectile.js';
+import type { ProjectilePool, ProjectileState, ElementPayload } from '../weapon/Projectile.js';
 import { ENEMY_TYPES, pickSpawnType, type EnemyTypeData, type EnemyType, type PlaceholderConfig } from './EnemyTypes.js';
 import { enemyHpMul, enemyDamageMul, enemySpeedMul, spawnIntervalSec, maxEnemiesAt, enemyXpTierBonus } from './Difficulty.js';
 import type { XpTier } from '../progression/XpOrb.js';
@@ -163,7 +163,7 @@ export class EnemyManager {
     projectiles: ProjectilePool,
     onPlayerHit: (damage: number) => void,
     onEnemyDeath?: (pos: THREE.Vector3, type: EnemyType) => void,
-    onBulletHit?: (pos: THREE.Vector3) => void,
+    onBulletHit?: (pos: THREE.Vector3, projectile: ProjectileState) => void,
     onElementHit?: (elements: ElementPayload[], enemy: Enemy, hitPos: THREE.Vector3) => void,
   ): void {
     this.elapsed += dt;
@@ -207,7 +207,7 @@ export class EnemyManager {
   private checkBulletHits(
     projectiles: ProjectilePool,
     onEnemyDeath?: (pos: THREE.Vector3, type: EnemyType) => void,
-    onBulletHit?: (pos: THREE.Vector3) => void,
+    onBulletHit?: (pos: THREE.Vector3, projectile: ProjectileState) => void,
     onElementHit?: (elements: ElementPayload[], enemy: Enemy, hitPos: THREE.Vector3) => void,
   ): void {
     const states = projectiles.states;
@@ -235,7 +235,7 @@ export class EnemyManager {
 
       const died = hitEnemy.takeDamage(s.damage, s.vel);
       s.hitIds.add(hitEnemyIdx);
-      onBulletHit?.(hitEnemy.root.position);
+      onBulletHit?.(hitEnemy.root.position, s);
       if (s.elements.length > 0 && onElementHit) {
         onElementHit(s.elements, hitEnemy, hitEnemy.root.position.clone());
       }

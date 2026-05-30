@@ -14,6 +14,7 @@ export interface ProjectileState {
   sizeMul: number;
   color: THREE.Color;
   elements: ElementPayload[];
+  signatureVFX?: 'electric';
 }
 
 const MAX = 512;
@@ -26,6 +27,7 @@ export interface SpawnOptions {
   sizeMul?: number;
   color?: [number, number, number];
   elements?: ElementPayload[];
+  signatureVFX?: 'electric';
 }
 
 export class ProjectilePool {
@@ -66,6 +68,7 @@ export class ProjectilePool {
         sizeMul: 1,
         color: new THREE.Color(1, 0.8, 0.27),
         elements: [],
+        signatureVFX: undefined,
       });
     }
   }
@@ -84,6 +87,7 @@ export class ProjectilePool {
       if (options?.color) s.color.setRGB(options.color[0], options.color[1], options.color[2]);
       else s.color.setRGB(1, 0.8, 0.27);
       s.elements = options?.elements ?? [];
+      s.signatureVFX = options?.signatureVFX;
       return;
     }
   }
@@ -118,7 +122,15 @@ export class ProjectilePool {
 
       this.dummy.position.copy(s.pos);
       // Trail: elongate along velocity direction (stretches sphere into bolt)
-      const size = this.bulletScale * s.sizeMul;
+      let size = this.bulletScale * s.sizeMul;
+      this.tmpColor.copy(s.color);
+      // Signature VFX: electric bolts crackle — cheap per-frame scale wobble + brightness
+      // shimmer modulating the existing instanced bullet (no extra particles spawned).
+      if (s.signatureVFX === 'electric') {
+        const phase = s.pos.x * 12.9 + s.pos.z * 7.3;
+        size *= 1 + 0.05 * Math.sin(s.life * 38 + phase);
+        this.tmpColor.multiplyScalar(1 + 0.03 * Math.sin(s.life * 52 + phase * 1.7));
+      }
       this.dummy.scale.set(size, size, size * 3.5);
       const vlen = s.vel.length();
       if (vlen > 0.001) {
@@ -128,7 +140,7 @@ export class ProjectilePool {
       }
       this.dummy.updateMatrix();
       this.mesh.setMatrixAt(visible, this.dummy.matrix);
-      this.mesh.setColorAt(visible, this.tmpColor.copy(s.color));
+      this.mesh.setColorAt(visible, this.tmpColor);
       visible++;
     }
     this.mesh.count = visible;

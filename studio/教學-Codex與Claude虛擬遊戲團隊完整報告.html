@@ -1,0 +1,406 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Codex × Claude 虛擬遊戲團隊完整報告｜Gorilla Gun Survivor</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: "Microsoft JhengHei", "Noto Sans TC", system-ui, sans-serif;
+    background: #f4f1e8;
+    color: #1d2020;
+    line-height: 1.75;
+  }
+  a { color: #5c2ac6; text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  .page { max-width: 1180px; margin: 0 auto; padding: 32px 22px 72px; }
+  .hero {
+    min-height: 62vh;
+    display: grid;
+    align-content: end;
+    gap: 24px;
+    padding: 42px 0 36px;
+    border-bottom: 6px solid #1d2020;
+  }
+  .eyebrow {
+    display: inline-flex;
+    width: fit-content;
+    gap: 10px;
+    align-items: center;
+    font: 800 12px/1.2 "Cascadia Mono", Consolas, monospace;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: #5c2ac6;
+    background: #c3ff3d;
+    border: 2px solid #1d2020;
+    padding: 8px 12px;
+    border-radius: 4px;
+  }
+  h1 {
+    font-size: clamp(36px, 7vw, 78px);
+    line-height: 1.02;
+    letter-spacing: 0;
+    max-width: 980px;
+  }
+  .subtitle {
+    font-size: 20px;
+    max-width: 860px;
+    color: rgba(29,32,32,.76);
+  }
+  .truth {
+    background: #1d2020;
+    color: white;
+    border-radius: 8px;
+    padding: 20px 22px;
+    max-width: 900px;
+    font-size: 17px;
+  }
+  .truth strong { color: #c3ff3d; }
+  .quick-links {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-top: 10px;
+  }
+  .quick-links a {
+    background: white;
+    border: 1px solid rgba(29,32,32,.18);
+    border-radius: 8px;
+    padding: 14px;
+    color: #1d2020;
+    font-weight: 800;
+  }
+  section { padding: 38px 0; border-bottom: 1px solid rgba(29,32,32,.16); }
+  h2 {
+    font-size: 30px;
+    line-height: 1.2;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+  }
+  h2 .num {
+    font: 900 15px/1 "Cascadia Mono", Consolas, monospace;
+    color: #5c2ac6;
+    background: #c3ff3d;
+    padding: 8px 10px;
+    border-radius: 4px;
+    border: 2px solid #1d2020;
+  }
+  h3 { color: #5c2ac6; margin: 22px 0 8px; font-size: 19px; }
+  p { margin: 10px 0; }
+  ul, ol { margin: 10px 0 14px 24px; }
+  li { margin: 4px 0; }
+  .grid-2, .grid-3, .grid-4 {
+    display: grid;
+    gap: 14px;
+    margin: 18px 0;
+  }
+  .grid-2 { grid-template-columns: repeat(2, 1fr); }
+  .grid-3 { grid-template-columns: repeat(3, 1fr); }
+  .grid-4 { grid-template-columns: repeat(4, 1fr); }
+  .card {
+    background: white;
+    border: 1px solid rgba(29,32,32,.14);
+    border-radius: 8px;
+    padding: 18px;
+  }
+  .card strong { display: block; margin-bottom: 6px; color: #1d2020; }
+  .card small { color: rgba(29,32,32,.62); }
+  .metric {
+    text-align: center;
+    background: white;
+    border: 1px solid rgba(29,32,32,.14);
+    border-top: 5px solid #5c2ac6;
+    border-radius: 8px;
+    padding: 18px 12px;
+  }
+  .metric .n { display: block; font-size: 34px; font-weight: 950; color: #5c2ac6; line-height: 1; }
+  .metric .label { color: rgba(29,32,32,.66); font-size: 13px; }
+  .flow {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 10px;
+    margin: 18px 0;
+  }
+  .step {
+    background: white;
+    border: 2px solid #1d2020;
+    border-radius: 8px;
+    padding: 14px;
+    min-height: 120px;
+  }
+  .step b { display: block; color: #5c2ac6; margin-bottom: 6px; }
+  code {
+    font-family: "Cascadia Mono", Consolas, monospace;
+    background: #1d2020;
+    color: #c3ff3d;
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 13px;
+  }
+  pre {
+    background: #1d2020;
+    color: #c3ff3d;
+    border-radius: 8px;
+    padding: 16px;
+    overflow-x: auto;
+    margin: 12px 0;
+    font: 13px/1.55 "Cascadia Mono", Consolas, monospace;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    border-radius: 8px;
+    overflow: hidden;
+    margin: 16px 0;
+  }
+  th, td {
+    padding: 11px 13px;
+    text-align: left;
+    border-bottom: 1px solid rgba(29,32,32,.12);
+    vertical-align: top;
+    font-size: 14px;
+  }
+  th { background: #1d2020; color: white; }
+  tr:last-child td { border-bottom: none; }
+  .callout {
+    background: #c3ff3d;
+    border: 3px solid #1d2020;
+    border-radius: 8px;
+    padding: 18px;
+    margin: 16px 0;
+  }
+  .warn { background: #fef3c7; border-color: #d97706; }
+  .dark { background: #1d2020; color: white; }
+  .dark a, .dark code { color: #c3ff3d; }
+  .image-band {
+    background: #1d2020;
+    border-radius: 8px;
+    padding: 14px;
+    margin: 18px 0;
+  }
+  .image-band img {
+    display: block;
+    width: 100%;
+    border-radius: 6px;
+  }
+  .caption {
+    color: rgba(255,255,255,.72);
+    font-size: 13px;
+    margin-top: 8px;
+  }
+  .role-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+    gap: 12px;
+    margin-top: 16px;
+  }
+  .role {
+    background: white;
+    border-left: 5px solid #5c2ac6;
+    border-radius: 8px;
+    padding: 14px;
+  }
+  .role b { display: block; }
+  .role span { color: rgba(29,32,32,.64); font-size: 13px; }
+  .footer {
+    padding: 30px 0 0;
+    color: rgba(29,32,32,.66);
+    font-size: 13px;
+  }
+  @media (max-width: 920px) {
+    .quick-links, .grid-4, .grid-3, .grid-2, .flow { grid-template-columns: 1fr; }
+    .hero { min-height: auto; }
+  }
+</style>
+</head>
+<body>
+<main class="page">
+  <header class="hero">
+    <span class="eyebrow">Terry Production Console · External Teaching Report</span>
+    <h1>我怎麼用 Codex 與 Claude 跑一個虛擬遊戲團隊</h1>
+    <p class="subtitle">以《Gorilla Gun Survivor — Web Edition》為例：用兩個可紀錄 terminal、Dashboard、Obsidian、GPT Image 2、Blender Python 與 OpenSpec，把遊戲開發整理成一套可追蹤的 AI 製作中控流程。</p>
+    <div class="truth"><strong>先講清楚：</strong>這個遊戲不是已經完成，而是剛開始建立可持續開發的方法。真正完成的是「中控流程、文件系統、團隊角色、資產產線、QA 入口與教學交接包」。</div>
+    <nav class="quick-links">
+      <a href="https://terry12260201.github.io/gorilla-gun-survivor/">公開遊戲</a>
+      <a href="#where">資料在哪</a>
+      <a href="#terminals">兩個 Terminal</a>
+      <a href="#team">AI 團隊</a>
+    </nav>
+  </header>
+
+  <section id="summary">
+    <h2><span class="num">01</span>這份報告在說什麼</h2>
+    <p>這不是「展示一個完成遊戲」的網頁，而是展示一套 AI 遊戲工作室的搭建方式。Terry 是製作中控，Codex 與 Claude 是不同類型的工作代理，所有重要資料都落在 repo、Dashboard、Obsidian 與 log 裡。</p>
+    <div class="grid-4">
+      <div class="metric"><span class="n">2</span><span class="label">核心終端機流程</span></div>
+      <div class="metric"><span class="n">28+</span><span class="label">虛擬團隊角色</span></div>
+      <div class="metric"><span class="n">3</span><span class="label">自製 GLB 已接入</span></div>
+      <div class="metric"><span class="n">1</span><span class="label">可重複教學管線</span></div>
+    </div>
+    <div class="callout warn">目前最重要的價值是可交接、可追蹤、可重跑。不要把這份報告解讀成遊戲內容已經進入正式量產完成。</div>
+  </section>
+
+  <section id="where">
+    <h2><span class="num">02</span>所有資料放在哪裡</h2>
+    <table>
+      <tr><th>類別</th><th>位置</th><th>用途</th></tr>
+      <tr><td>主專案</td><td><code>E:\Project\2026\Gorilla Gun Survivor — Web Edition</code></td><td>程式、資產、Dashboard、OpenSpec、Automation。</td></tr>
+      <tr><td>公開遊戲連結</td><td><a href="https://terry12260201.github.io/gorilla-gun-survivor/">https://terry12260201.github.io/gorilla-gun-survivor/</a></td><td>對外展示的 GitHub Pages 遊戲入口。此報告產生環境無法連外驗證狀態。</td></tr>
+      <tr><td>Obsidian 根</td><td><code>E:\Obsidian\Game_GG\南瓜筆記\南瓜虛擬科技</code></td><td>Terry 長期筆記與交接文件。</td></tr>
+      <tr><td>教學交接包</td><td><code>Gorilla Gun Survivor Web Edition Terry 教學交接包</code></td><td>新 Codex prompt、完整教學報告、terminal 流程、AI 團隊索引。</td></tr>
+      <tr><td>Terry Dashboard</td><td><a href="dashboard/terry-progress.html">studio/dashboard/terry-progress.html</a></td><td>目前進度、下一步、QA 與工作紀錄。</td></tr>
+      <tr><td>Mission Control</td><td><a href="dashboard/pumpkin-mission-control-v3.html">studio/dashboard/pumpkin-mission-control-v3.html</a></td><td>AI 虛擬團隊角色與 prompt 展示。</td></tr>
+      <tr><td>原始團隊規劃</td><td><a href="dashboard/原始團隊規劃.html">studio/dashboard/原始團隊規劃.html</a></td><td>早期團隊頁面備份。</td></tr>
+      <tr><td>Claude 教學頁</td><td><a href="教學-我怎麼用Claude跑一個虛擬遊戲團隊.html">studio/教學-我怎麼用Claude跑一個虛擬遊戲團隊.html</a></td><td>地端 Claude 產出的參考報告。</td></tr>
+    </table>
+  </section>
+
+  <section id="terminals">
+    <h2><span class="num">03</span>兩個 Terminal 怎麼跑</h2>
+    <p>Terry 原始需求是多開 terminal 並保留紀錄。真正的設計不是保存視窗捲軸，而是用 scripts 把過程寫進 <code>.ops/logs</code>。</p>
+    <div class="grid-2">
+      <div class="card">
+        <strong>Terminal A：Live Ops / Dev Server</strong>
+        <p>負責啟動、查詢、停止遊戲 dev server。</p>
+        <pre>cd "E:\Project\2026\Gorilla Gun Survivor — Web Edition"
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\automation\scripts\start-dev.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\automation\scripts\status-dev.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\automation\scripts\stop-dev.ps1</pre>
+      </div>
+      <div class="card">
+        <strong>Terminal B：Build / Dashboard</strong>
+        <p>負責驗證、build、更新 Terry 進度頁。</p>
+        <pre>cd "E:\Project\2026\Gorilla Gun Survivor — Web Edition"
+npm run validate:weapons
+npm run build
+npm run dashboard:update</pre>
+      </div>
+    </div>
+    <div class="callout">可信紀錄：<code>.ops/logs</code>、<code>.ops/pids</code>、Obsidian 筆記與 Dashboard，不是 terminal scrollback。</div>
+  </section>
+
+  <section id="split">
+    <h2><span class="num">04</span>Codex 與 Claude 怎麼分工</h2>
+    <div class="grid-2">
+      <div class="card">
+        <strong>Codex</strong>
+        <ul>
+          <li>改 repo、程式、JSON、Dashboard generator。</li>
+          <li>跑 build、validator、QA scripts。</li>
+          <li>寫 PowerShell / Node / Blender Python。</li>
+          <li>把重要步驟同步到 Obsidian。</li>
+        </ul>
+      </div>
+      <div class="card">
+        <strong>Claude in VS Code</strong>
+        <ul>
+          <li>長篇企劃與設計討論。</li>
+          <li>AI 團隊角色扮演、任務信件、評審文字。</li>
+          <li>整理 pending changes、inbox/outbox。</li>
+          <li>把需要 Terry 決策的問題寫清楚。</li>
+        </ul>
+      </div>
+    </div>
+    <p>規則很簡單：同一個 process 只給一個 agent 管；同一份檔案不要兩邊同時改；重要結論一定落地成文件。</p>
+  </section>
+
+  <section id="team">
+    <h2><span class="num">05</span>AI 虛擬團隊怎麼設定</h2>
+    <p>團隊不是只存在聊天裡，而是被整理成 Mission Control 與 OpenSpec roles。外部展示看 Mission Control，AI 接手讀 OpenSpec。</p>
+    <div class="role-grid">
+      <div class="role"><b>CEO Pumpkin King</b><span>方向、取捨、守門。</span></div>
+      <div class="role"><b>CTO Circuit</b><span>技術架構與工程品質。</span></div>
+      <div class="role"><b>CAO Raven</b><span>美術總監、圖像與風格審核。</span></div>
+      <div class="role"><b>CMO Harvest</b><span>市場、文案、對外敘事。</span></div>
+      <div class="role"><b>Concept Artist</b><span>GPT Image 2 prompt 與概念方向。</span></div>
+      <div class="role"><b>3D Specialist</b><span>Blender、GLB、poly budget。</span></div>
+      <div class="role"><b>Gameplay Programmer</b><span>武器、敵人、卡片與回合邏輯。</span></div>
+      <div class="role"><b>QA Analyst</b><span>測試報告、可讀性與風險確認。</span></div>
+    </div>
+    <table>
+      <tr><th>資料</th><th>位置</th></tr>
+      <tr><td>角色總覽頁</td><td><code>studio/dashboard/pumpkin-mission-control-v3.html</code></td></tr>
+      <tr><td>角色規格</td><td><code>openspec/roles/</code></td></tr>
+      <tr><td>系統/內容規格</td><td><code>openspec/specs/</code></td></tr>
+      <tr><td>Mailbox</td><td><code>studio/mailbox/</code></td></tr>
+    </table>
+  </section>
+
+  <section id="pipeline">
+    <h2><span class="num">06</span>GPT Image 2 → Blender → Game</h2>
+    <p>官方模型名稱是 <code>gpt-image-2</code>，不是 GPT Image 2.0。這條管線目前已能示範，但 Blender 產物仍需要人工美術修正。</p>
+    <div class="flow">
+      <div class="step"><b>1 Brief</b>寫用途、玩法、輪廓、材質、禁忌。</div>
+      <div class="step"><b>2 GPT Image 2</b>產 reference sheet。</div>
+      <div class="step"><b>3 CAO Review</b>確認可讀性與方向。</div>
+      <div class="step"><b>4 Blender</b>Python fallback 或 MCP 建模。</div>
+      <div class="step"><b>5 GLB</b>輸出到 game assets。</div>
+      <div class="step"><b>6 QA</b>在遊戲內測載入與辨識。</div>
+    </div>
+    <pre>$env:OPENAI_API_KEY="你的 key"
+npm run art:concept -- studio/art-pipeline/briefs/plasma-bomber-v1.json</pre>
+    <div class="image-band">
+      <img src="../art/concepts/plasma-bomber-v1.concept.png" alt="Plasma Bomber GPT Image 2 concept sheet" />
+      <div class="caption">GPT Image 2 產出的 Plasma Bomber reference sheet。後續 Blender Python 產物和這張圖仍有差距，這是目前管線需要改善的地方。</div>
+    </div>
+  </section>
+
+  <section id="assets">
+    <h2><span class="num">07</span>目前已接入遊戲的自製資產</h2>
+    <table>
+      <tr><th>資產</th><th>GLB</th><th>來源 / 腳本</th><th>遊戲接點</th></tr>
+      <tr><td>Shock Baton V2</td><td><code>public/assets/custom/shock_baton_v2.glb</code></td><td><code>tools/blender/create_shock_baton_v2.py</code></td><td><code>src/data/weapons.json</code></td></tr>
+      <tr><td>Plasma Bomber V1</td><td><code>public/assets/custom/plasma_bomber_v1.glb</code></td><td><code>tools/blender/create_plasma_bomber_v1.py</code></td><td><code>src/enemy/EnemyTypes.ts</code></td></tr>
+      <tr><td>Plasma Bomber V2</td><td><code>public/assets/custom/plasma_bomber_v2.glb</code></td><td><code>tools/blender/export_plasma_bomber_v2.py</code></td><td><code>src/enemy/EnemyTypes.ts</code></td></tr>
+    </table>
+    <div class="image-band">
+      <img src="../art/previews/plasma_bomber_v2.png" alt="Plasma Bomber V2 Blender preview" />
+      <div class="caption">Blender background mode 輸出的遊戲用 preview。這是流程打通，不是最終美術品質。</div>
+    </div>
+  </section>
+
+  <section id="qa">
+    <h2><span class="num">08</span>怎麼看遊戲內 QA</h2>
+    <p>正常遊戲裡 bomber v1 45 秒後解鎖，v2 90 秒後解鎖。為了不要讓測試卡在等待與死亡問題，已加 URL-only QA mode。</p>
+    <pre>npm run dev -- --host 127.0.0.1 --port 5174</pre>
+    <p>打開：</p>
+    <pre>http://127.0.0.1:5174/?qaBombers=1</pre>
+    <ul>
+      <li>QA mode 會快速生成 <code>bomber</code> 與 <code>plasma_bomber_v2</code>。</li>
+      <li>正常遊戲不帶參數，不受影響。</li>
+      <li>QA 報告骨架：<code>qa/reports/run-bomber-readability-20260519.md</code></li>
+    </ul>
+  </section>
+
+  <section id="pending">
+    <h2><span class="num">09</span>目前不是完成，而是待整理</h2>
+    <p>2026-05-29 掃描時，專案仍有未提交變更與 Claude pending 工作。下一個 Codex 不應直接 reset。</p>
+    <table>
+      <tr><th>類型</th><th>項目</th></tr>
+      <tr><td>必讀 pending</td><td><code>studio/CLAUDE-PENDING-CHANGES.md</code>, <code>studio/WELCOME-BACK.md</code></td></tr>
+      <tr><td>dirty source</td><td><code>src/core/Game.ts</code>, <code>src/enemy/EnemyManager.ts</code>, <code>src/weapon/*.ts</code></td></tr>
+      <tr><td>QA 新檔</td><td><code>qa/reports/run-bomber-readability-20260519.md</code></td></tr>
+      <tr><td>Mailbox</td><td><code>studio/mailbox/terry-inbox/2026-05-20-*.md</code>, <code>2026-05-23-*.md</code></td></tr>
+    </table>
+    <div class="callout warn">下一步應該是整理 pending、跑 build、確認 Dashboard，而不是急著宣稱進度完成。</div>
+  </section>
+
+  <section id="teach">
+    <h2><span class="num">10</span>對外可以怎麼講</h2>
+    <div class="dark card">
+      <p>我不是單純叫 AI 寫遊戲，而是在搭一個能運作的 AI 製作中控。Codex 負責可驗證的工程動作，Claude 負責長篇企劃與團隊角色，Obsidian 負責長期記憶，Dashboard 負責讓人看懂進度，`.ops/logs` 負責 terminal 的可信紀錄。GPT Image 2 負責概念圖，Blender Python 先把模型管線打通，OpenSpec 則把聊天中的設計轉成可以版本化的規格。</p>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <p>Generated for Terry / Pumpkin Virtual Tech. Main repo: <code>E:\Project\2026\Gorilla Gun Survivor — Web Edition</code></p>
+    <p>Related pages: <a href="教學-我怎麼用Claude跑一個虛擬遊戲團隊.html">Claude 教學頁</a> · <a href="dashboard/terry-progress.html">Terry Dashboard</a> · <a href="dashboard/pumpkin-mission-control-v3.html">Mission Control</a></p>
+  </footer>
+</main>
+</body>
+</html>

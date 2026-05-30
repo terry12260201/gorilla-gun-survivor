@@ -216,8 +216,27 @@ export class Game {
               this.deathBursts.burst(pos, [1.0, 0.75, 0.2]);
             }
           },
-          (pos) => {
+          (pos, projectile) => {
             this.impactSparks.burst(pos);
+            // Signature VFX: electric bullets (e.g. shock_baton) pop a tinted
+            // spark + arc 1 hop to a nearby enemy. Reuses the existing sparks /
+            // lightning pools (no new pool), and LightningSystem caps arcs at
+            // MAX_ARCS=30 so draw calls stay within the ≤200 VFX budget.
+            if (projectile.signatureVFX === 'electric') {
+              const c = projectile.color;
+              this.impactSparks.burst(pos, [c.r, c.g, c.b], 5);
+              // Arc 1 hop to a *neighbouring* enemy. findChainTargets() always
+              // returns the struck enemy as the first link (distance ~0 from
+              // pos), so request 2 and drop the self-link — the remaining entry
+              // is a genuine nearby enemy, or empty if none is within reach.
+              const arc = this.enemies.findChainTargets(pos, 2, 5).slice(1);
+              if (arc.length > 0) {
+                // 0.25x bullet damage keeps this a signature flourish, not a
+                // balance-breaking second damage source (Terry: tune as needed).
+                this.lightning.chain(pos, arc, Math.max(1, Math.round(projectile.damage * 0.25)));
+                this.sfx.lightning();
+              }
+            }
             if (this.lightningChance > 0 && Math.random() < this.lightningChance) {
               this.lightning.strike(pos);
               this.sfx.lightning();

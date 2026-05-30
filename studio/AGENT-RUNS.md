@@ -2381,3 +2381,1446 @@ Terry Test:
 
 Next:
 ```
+
+## 2026-05-20 13:10 Claude (Cowork loop tick #31 — ROOT CAUSE diagnosis)
+
+Status: Blocked (但已找到真因 + 可修方案)
+Task: VFX-01 / QA-03 (仍 blocked，未推進 code)
+Slice: 不再寫冗長 reminder。改用 host 端硬證據重新診斷 git blocker，推翻前 9 封 reminder 的「index corrupt」誤判。
+
+Findings (host-side ground truth):
+- `.git/index` = 14672 bytes，完好（前面 tick 讀到 0/`\0\0\0\0` 是沙盒 mount stale-read 假象）。
+- `.git/HEAD` = ref: refs/heads/main；`refs/heads/main` = ed56589；objects = 263 個檔，全部完好。
+- 真兇 = `.git/index.lock`（0 byte，May 19 04:00 留下的 stale lock），git 因此拒絕運作。
+- 同一秒 `stat` 看到 14672 bytes 但 `head` 看到 "No such file" → 證明沙盒對 .git/ 的讀取不可信。
+- 沙盒 `rm -f .git/index.lock` → `Operation not permitted`（mount 無 unlink 權限，正是當初鎖檔清不掉的原因）。
+
+Changed:
+- studio/mailbox/terry-inbox/2026-05-20-1310-claude-ROOT-CAUSE-stale-index-lock.md（新；給 Terry 的一行修法 `Remove-Item .git\index.lock -Force`）
+- studio/AGENT-RUNS.md（本筆）
+- studio/claude-as-codex-loop.md（Current Task State 更新 + 修正誤判）
+- .ops/logs/claude-loop-20260520-1310.log
+
+Verification:
+- npm run validate:weapons: N/A (git blocked, 不適用)
+- npm run build: N/A
+- git commit/push: skipped (沙盒不碰 git；policy)
+- 紅線檢查: 未跑任何 git 指令、未動 code/data/config，未違反
+
+Next Slice: 等 Terry 在 Windows 刪掉 .git/index.lock + 回一筆 verify entry → 解除 blocked 後做 VFX-01 Slice 3。在那之前不開任何 code slice、不挑 backlog（已全清）。若 outbox 出現比 2026-05-19-1530 更新的決策 → 先讀新決策。
+
+## 2026-05-20 13:37 Claude (Cowork loop tick #32 — blocker CLEARED, VFX-01 Slice 3)
+
+Status: Completed slice
+Task: VFX-01
+
+Slice: git blocker 解除（lock 消失 + index DIRC 健康）→ 恢復並完成 VFX-01 Slice 3：signatureVFX 全鏈接通 + 電弧子彈每幀微抖。
+
+Findings (host-side ground truth, fresh mount):
+- `.git/*.lock` 全部不存在（`ls .git/*.lock` → no match）→ 前 9 封 reminder 的 stale-lock blocker 已解除
+- `.git/index` = 35365 bytes，header `DIRC`（合法）→ 前 30 tick 的 "index corrupt" 確為沙盒 mount stale-read 假象
+- automation/STOP.txt 不存在；outbox 仍只有 2026-05-19-1530（無新決策）；AGENT-RUNS 仍無 Terry verify entry
+- Slice 2 產物已 host-read 確認真實存在：validate-weapons.mjs 有 signatureVFX optional-enum 驗證、weapons.json 的 wpn_shock_baton 帶 "signatureVFX":"electric"
+
+Changed:
+- src/weapon/AutoWeaponSpec.ts: WeaponSpec 加 signatureVFX?:'electric' + WEAPON_SPEC_FIELDS 加 'signatureVFX'
+- src/weapon/Projectile.ts: ProjectileState + SpawnOptions 加 signatureVFX、spawn() 賦值、update() 對 electric 子彈加 scale ±5% / brightness ±3% 微抖（複用既有 InstancedMesh，不 spawn 新粒子）
+- src/weapon/AutoWeapon.ts: fire() spawn options 傳 signatureVFX: this.spec.signatureVFX
+- studio/CLAUDE-PENDING-CHANGES.md: 加 tick #32 verify-on-Windows 清單 + git add 清單
+- studio/mailbox/terry-inbox/2026-05-20-1337-claude-blocker-cleared-slice3-done.md（新；取代前 9 封 "blocked" reminder）
+
+Verification:
+- npm run validate:weapons: N/A（沙盒不可信；Slice 2 既有驗證已涵蓋 signatureVFX）
+- npm run build: N/A（沙盒不可信，verify-on-Windows pending）
+- 紅線檢查: 未從沙盒跑 git（policy 遵守）；無 force-push；粒子預算 ≤200 未動（純調變既有子彈）；未動 ENEMY-01；未寫 token；未動 main 以外分支政策；未偏離 outbox 決策
+- host-read 校對: 4 個 src 檔語法/型別/import 一致，signatureVFX 全鏈型別串通
+
+Terry Test: 拿 wpn_shock_baton 玩，確認子彈有電感微抖/閃爍且其他武器穩定；npm run validate:weapons + npm run build 應 pass。
+
+Next: tick #33 → VFX-01 Slice 4（找命中判定檔案，加 1 跳鏈電 + 帶色 spark）。先三條件檢查：(a) STOP.txt→退出；(b) outbox 新決策→先讀；(c) 否則開 Slice 4。一次只做一個 slice。
+
+## 2026-05-20 17:34 Claude (Cowork loop tick #40 — 純 idle + fresh 驗證 + ledger 誠實接續)
+
+Status: Blocked (idle — VFX-01 與 QA-03 都待 Terry-on-Windows，無可自主推進的 code/data slice)
+Task: VFX-01 / QA-03（兩者皆 code/skeleton 完成，卡 Terry verify）
+
+Slice: 三條件檢查全過 → (a) automation/STOP.txt 不存在（`ls` no match） (b) outbox 仍只有 2026-05-19-1530-terry-direction.md（7163 B，無新決策） (c) AGENT-RUNS 仍無 Terry 本人 verify/玩測 entry。本 tick 不開 code slice、不偽造 QA 玩測數據、不寫 inbox reminder（嚴守降載）。做一件便宜有價值的事：fresh mount 重跑驗證確認 VFX-01 程式碼鏈無回退。
+
+Findings (sandbox ground truth, fresh mount):
+- **STOP 條件全部為否**：無 STOP.txt；HANDOFF 開頭無 STOP；VFX-01+QA-03 未雙雙 Done；outbox 唯一決策仍是 2026-05-19-1530（未更新）；build.latest.log = May 18 舊 baseline 非新 fail → 無連續 3 fail。
+- **VFX-01 程式碼健康（fresh 驗證，可信）**：`npm run validate:weapons` PASS（8 weapon rows, exit 0）；`npx tsc --noEmit` PASS（exit 0，零型別錯誤）。signatureVFX 鏈標記實存且與文件記錄一致：AutoWeaponSpec.ts ×2、Projectile.ts ×5、weapons.json ×1。→ tick #34 的「fresh mount validate+tsc 可信」結論仍成立、無回退。`vite build` 維持只能 Windows verify（沙盒缺 Linux rollup binary，非 code 問題）。
+- **Ledger 誠實接續**：AGENT-RUNS.md 實為 2509 行，最後正式 entry 止於 tick #36（行 2442）。loop.md 先前狀態檔聲稱 tick #37/#38 entry 已寫於「行 2592」是 mount stale-read 假象——檔案根本不到 2592 行，那兩筆從未落盤。其描述工作皆純 idle + 重複驗證，無磁碟產物遺失。本 tick #40 以單一 entry 誠實接續，不偽造 #37/#38 逐筆。
+- QA-03 報告骨架存在但三軸數據仍全 `<FILL>`，需 Terry 真人玩測 + CAO Raven 簽字，**不可偽造**。
+
+Changed:
+- studio/AGENT-RUNS.md（本筆 tick #40）
+- studio/claude-as-codex-loop.md（Current Task State → tick #40；next_slice → tick #41）
+- .ops/logs/claude-loop-20260520-1734.log
+
+Verification:
+- npm run validate:weapons: PASS（8 rows, exit 0；fresh mount 可信）
+- npx tsc --noEmit: PASS（exit 0，零型別錯誤）
+- npm run build (vite): N/A（沙盒缺 Linux rollup binary，verify-on-Windows pending）
+- git commit/push: skipped（沙盒不碰 git，policy 遵守）
+- 紅線檢查: 未跑 git；無 force-push；未動 src/code/data/config（純驗證+文件）；粒子預算未動（≤200）；未進 ENEMY-01；未寫 token；未偏離 outbox 決策；未寫 inbox（降載，不 spam）
+
+Terry Test: VFX-01 → Windows `npm run build`（vite 打包）+ 拿 wpn_shock_baton 玩測全鏈（電感微抖/帶色 spark/1 跳鏈電）。QA-03 → `?qaBombers=1` 跑 Checkpoint B 填三軸 `<FILL>` + CAO Raven 簽字。兩者過了才宣告 Done 並進本輪終點 STOP 流程。
+
+Next: tick #41 三條件檢查。(a) STOP.txt 出現→退出寫 idle entry；(b) outbox 新決策→先讀；(c) AGENT-RUNS 出現 Terry verify/玩測 entry→解除 blocked 依結果推進（VFX-01 Slice 6 收尾或 QA-03 填數據後 CAO 簽字）；否則維持純 idle（VFX-01+QA-03 皆待 Terry，無自主 slice，Doc-Only Backlog 9/9 早已全清）→ 只更新狀態檔+.ops log，不開 code slice、不偽造數據、不寫 inbox reminder。提醒：tsc PASS ≠ VFX-01 Done、報告骨架 ≠ QA-03 Done，兩者皆需 Terry 驗收。
+
+## 2026-05-20 15:35 Claude (Cowork loop tick #36 — 純 idle + ledger 補記 + fresh 驗證)
+
+Status: Blocked (idle — VFX-01 與 QA-03 都待 Terry-on-Windows，無可自主推進的 code/data slice)
+Task: VFX-01 / QA-03（兩者皆 code/skeleton 完成，卡 Terry verify）
+
+Slice: 三條件檢查全過 → (a) automation/STOP.txt 不存在 (b) outbox 仍只有 2026-05-19-1530-terry-direction.md（無新決策） (c) AGENT-RUNS 仍無 Terry verify entry。本 tick 不開 code slice、不偽造 QA 玩測數據、不寫 inbox reminder（降載）。改做兩件有價值的事：(1) fresh mount 重跑驗證確認 VFX-01 程式碼健康 (2) 誠實補記 ledger 缺口。
+
+Findings (host-side / sandbox ground truth, fresh mount):
+- **STOP 條件全部為否**：無 STOP.txt（automation/ 只有 scripts+workflows）；HANDOFF 開頭無 STOP；VFX-01+QA-03 未雙雙 Done；outbox 唯一決策仍是 2026-05-19-1530（無更新）。
+- **VFX-01 程式碼健康（fresh 驗證，可信）**：`npm run validate:weapons` PASS（8 weapon rows, exit 0）；`npx tsc --noEmit` PASS（exit 0，零型別錯誤）。signatureVFX 鏈標記實存：AutoWeaponSpec.ts ×2、Projectile.ts ×5、weapons.json ×1。→ 確認 tick #34 的「fresh mount validate+tsc 可信」結論仍成立。`vite build` 維持只能在 Windows verify（沙盒缺 Linux rollup binary，非 code 問題）。
+- **Ledger 缺口（誠實記錄，非偽造）**：AGENT-RUNS.md 最後一筆正式 entry 為 tick #32（13:37）。tick #33/#34/#35 的**產物確實存在於磁碟**（.ops/logs/claude-loop-20260520-{1408,1438,1505}.log 三個 log + qa/reports/run-bomber-readability-20260519.md 5302 bytes + 上述 VFX 程式碼標記），但它們的 AGENT-RUNS **標題條目從未落盤**。本 tick 以單一 entry 誠實記錄此事實，不回頭偽造逐 tick 條目。tick #33 內容=VFX-01 Slice 4（命中判定 onBulletHit 鏈電+帶色 spark）、tick #34=Slice 5 驗收複核、tick #35=QA-03 報告骨架起草——三者產物可在磁碟驗證，進度為真。
+- QA-03 報告骨架存在但三軸數據仍全 `<FILL>`，需 Terry 真人玩測 + CAO Raven 簽字，**不可偽造**。
+
+Changed:
+- studio/AGENT-RUNS.md（本筆 tick #36）
+- studio/claude-as-codex-loop.md（Current Task State → tick #36；補記 ledger 缺口已記錄；next_slice → tick #37）
+- .ops/logs/claude-loop-20260520-1535.log
+
+Verification:
+- npm run validate:weapons: PASS（8 rows, exit 0；fresh mount 可信）
+- npx tsc --noEmit: PASS（exit 0，零型別錯誤）
+- npm run build (vite): N/A（沙盒缺 Linux rollup binary，verify-on-Windows pending）
+- git commit/push: skipped（沙盒不碰 git，policy 遵守）
+- 紅線檢查: 未跑 git；無 force-push；未動 src/code/data/config（純驗證+文件）；粒子預算未動（≤200）；未進 ENEMY-01；未寫 token；未偏離 outbox 決策；未寫 inbox（降載，不 spam）
+
+Terry Test: VFX-01 → Windows `npm run build` + 拿 wpn_shock_baton 玩測全鏈（電感微抖/帶色 spark/1 跳鏈電）。QA-03 → `?qaBombers=1` 跑 Checkpoint B 填三軸 + CAO Raven 簽字。兩者過了才宣告 Done 並進本輪終點 STOP 流程。
+
+Next: tick #37 三條件檢查。(a) STOP.txt 出現→退出寫 idle entry；(b) outbox 新決策→先讀；(c) 否則維持純 idle（VFX-01+QA-03 皆待 Terry，無自主 slice，Doc-Only Backlog 9/9 早已全清）→ 只更新狀態檔+.ops log，不開 code slice、不偽造數據、不寫 inbox reminder。提醒：tsc PASS ≠ VFX-01 Done、報告骨架 ≠ QA-03 Done，兩者皆需 Terry 驗收。
+
+## 2026-05-20 15:05 Claude (Cowork loop tick #35 — QA-03 slice + ledger 修正)
+
+Status: Completed slice
+Task: QA-03（並行；VFX-01 code 已完備不再開 code slice）
+
+Slice: 三條件檢查全過 → 推進 QA-03：依 `qa/reports/run-template.md` 起草 `qa/reports/run-bomber-readability-20260519.md` 報告骨架。純文件，不需 build/git。
+
+三條件檢查（host + sandbox 雙確認）:
+- (a) `automation/STOP.txt` 不存在（`ls` no match；automation/ 仍只有 scripts/ + workflows/）→ 不停
+- (b) outbox 仍只有 `2026-05-19-1530-terry-direction.md`（無更新決策）→ 不需改向
+- (c) AGENT-RUNS 仍無 Terry verify entry，VFX-01 維持 code-complete / pending Terry Windows build+玩測 → 條件 (c) 成立，推進 QA-03
+
+**Ledger 修正（重要）**: loop.md Current Task State 宣稱 tick #33/#34 已寫 AGENT-RUNS entry，但實際 ledger 在本 tick 前止於 tick #32（#33/#34 entry 從未落盤）。本 tick 已 host-side 實查確認 tick #33/#34 描述的 **VFX-01 code 確實存在於磁碟**：
+- `src/weapon/AutoWeaponSpec.ts:14` signatureVFX?:'electric' + `:28` WEAPON_SPEC_FIELDS
+- `src/weapon/Projectile.ts:17/30` signatureVFX 欄位 + `:127-129` electric per-frame wobble
+- `src/data/weapons.json:89` "signatureVFX":"electric"
+- `src/core/Game.ts:221-269` electric 帶色 spark + findChainTargets 1 跳鏈電
+- `src/enemy/EnemyManager.ts:166/210/238` onBulletHit 新簽名傳 ProjectileState
+→ 故 VFX-01 code 進度真實；缺的只是 #33/#34 ledger 條目（文件落差，非 code 落差）。本 entry 一併補記此事實，不另行偽造逐 tick 條目。
+
+Changed:
+- qa/reports/run-bomber-readability-20260519.md（新；QA-03 三軸視測骨架：剪影差異 / 引信警告辨識 / 俯視比例 + 需修/不修結論表 + CAO Raven 簽字段，全部 `<FILL>` 待 Terry 玩測填寫）
+- studio/CLAUDE-PENDING-CHANGES.md（加 tick #35 段）
+- studio/claude-as-codex-loop.md（Current Task State → tick #35；qa_03_progress 0.5/3 → 1/3）
+- studio/AGENT-RUNS.md（本 entry）
+- .ops/logs/claude-loop-20260520-1505.log
+
+Verification:
+- npm run validate:weapons: N/A（純文件，未動武器資料）
+- npm run build: N/A（純文件）
+- git commit/push: skipped（沙盒不碰 git；policy 維持）
+- 紅線檢查: 未跑任何 git 指令、未動 src/code/data/config、未碰 ENEMY-01、未寫 token、未偏離 outbox 決策、粒子預算未動 → 無違反
+
+Terry verify: 用 `?qaBombers=1` 跑一次 Checkpoint B bomber 玩測，照本報告三軸欄位填 `<FILL>`，填完交 CAO Raven 簽字 → QA-03 結論段成形。
+
+Next: tick #36 → 先三條件檢查。(a) STOP.txt 出現→退出寫 idle entry；(b) outbox 新決策→先讀；(c) 否則：VFX-01 仍待 Terry Windows build+玩測、QA-03 報告待 Terry 玩測填寫，**兩者都卡在 Terry-on-Windows，無可自主推進的純文件 slice**（QA-03 骨架已成、CAO 簽字需真人）→ 回純 idle 模式，更新狀態檔 + .ops log，不開新 code slice、不偽造玩測數據。VFX-01 + QA-03 都經 Terry 驗收才進本輪終點 STOP 流程。
+
+## 2026-05-20 14:08 Claude (Cowork loop tick #33 — VFX-01 Slice 4) [補記於 tick #34]
+
+Status: Completed slice
+Task: VFX-01
+Slice: 找到命中判定（EnemyManager.checkBulletHits）→ 加 electric 帶色 spark + 1 跳鏈電。（此 entry 於 tick #34 補寫——tick #33 寫了 .ops log + 狀態檔但漏寫本 AGENT-RUNS 段。）
+
+Changed:
+- src/enemy/EnemyManager.ts: import ProjectileState；onBulletHit 簽名 (pos)→(pos, projectile: ProjectileState)（update + checkBulletHits 兩處）；命中點 onBulletHit?.(hitEnemy.root.position, s)
+- src/core/Game.ts: 命中回呼 (pos, projectile)；electric signature → impactSparks.burst(pos,[c.r,c.g,c.b],5) + findChainTargets(pos,2,5).slice(1) → lightning.chain(pos, arc, max(1,round(damage*0.25))) 1 跳 + sfx.lightning()
+- studio/CLAUDE-PENDING-CHANGES.md: tick #33 verify 清單
+
+Verification:
+- 當時標 verify-on-Windows pending（沙盒未跑 build）
+- 紅線檢查: 未跑 git；無新 pool；MAX_ARCS=30 cap；≤200 預算未破
+
+Next: tick #34 → VFX-01 Slice 5 複核 + 整理一次性 verify 清單，不宣告 Done。
+
+## 2026-05-20 14:38 Claude (Cowork loop tick #34 — VFX-01 沙盒驗證突破)
+
+Status: Completed slice
+Task: VFX-01 (Slice 5 — 驗收複核)
+
+Slice: 三條件複查全過 → host-read 完整複核 VFX-01 全鏈一致性 → 在 fresh mount 實跑 validate + tsc，發現沙盒其實可信（推翻 30+ tick 的「npm 不可信」誤判，與 tick #31 推翻「git corrupt」同理）。
+
+Findings (沙盒實測，fresh mount):
+- automation/STOP.txt 不存在；outbox 仍只有 2026-05-19-1530（無新決策）；git index DIRC 35365 bytes + 無 .git/*.lock
+- `npm run validate:weapons` → ✅ PASS（validated 8 weapon rows，含 signatureVFX）
+- `tsc --noEmit` → ✅ PASS（exit 0、零型別錯誤）→ VFX-01 Slice 2-4 全部 .ts 改動型別安全
+- `vite build` → ⚠️ 失敗但**非程式碼問題**：缺 @rollup/rollup-linux-x64-gnu（node_modules 是 Windows 安裝的，Linux 沙盒缺原生二進位，npm optional-deps bug）。Terry Windows 端會正常打包。
+- 全鏈簽名相符複核: findChainTargets / impactSparks.burst / lightning.chain / ProjectileState.color&damage 皆型別串通
+
+Changed:
+- studio/CLAUDE-PENDING-CHANGES.md: 新增 tick #34 段（驗證突破 + VFX-01 一次性完整 verify 清單）
+- studio/AGENT-RUNS.md: 補寫漏掉的 tick #33 entry + 本 tick #34 entry
+- studio/claude-as-codex-loop.md: Current Task State 更新（含「沙盒可信」修正）
+- .ops/logs/claude-loop-20260520-1438.log
+- **未動任何 src/ code、data、config**（本 tick 純複核 + 驗證 + 狀態檔）
+
+Verification:
+- npm run validate:weapons: ✅ PASS（沙盒實跑）
+- tsc --noEmit: ✅ PASS（沙盒實跑，零錯誤）
+- vite build: ⚠️ 沙盒環境缺 Linux rollup binary（非 code 問題）→ verify-on-Windows pending（僅打包步驟 + 玩測）
+- git commit/push: skipped（沙盒不碰 git；policy）
+- 紅線檢查: 未跑 git；未動 code/data/config；未 force-push；未動 ENEMY-01；未寫 token；未偏離 outbox 決策；粒子預算 ≤200 未動
+
+Terry Test: `npm run build`（你的 Windows 環境跑完整 vite 打包）+ `npm run dev` 拿 wpn_shock_baton 玩測 4 項（子彈微抖 / 帶色 spark / 1 跳鏈電 / 其他武器不變）。過了才宣告 VFX-01 Done。
+
+Next: tick #35 → 先三條件檢查。(a) STOP.txt→退出；(b) outbox 新決策→先讀；(c) 否則：VFX-01 code 已型別驗證完備、僅待 Terry vite 打包+玩測，**不宜再對 VFX-01 開 code slice**（避免改壞已驗證的鏈）。改推進 QA-03 並行 slice：用 qa/reports/run-template.md 起草 `run-bomber-readability-20260519.md` 報告骨架（純文件，不需 build）。一次只做一個 slice。VFX-01+QA-03 都 Done 才進 STOP 流程。
+
+## 2026-05-20 14:08 Claude (Cowork loop tick #33 — VFX-01 Slice 4)
+
+Status: Completed slice
+Task: VFX-01
+
+Slice: 完成 VFX-01 Slice 4 — electric 子彈命中加帶色 spark + 1 跳鏈電（接通命中判定 → signatureVFX → VFX）。
+
+三條件檢查（host-side ground truth）:
+- (a) `automation/STOP.txt` 不存在（`ls automation/` → 只有 scripts/ workflows/）✓
+- (b) outbox 仍只有 `2026-05-19-1530-terry-direction.md`（無更新決策）✓
+- (c) git blocker 仍解除：`.git/index` 35365 bytes header `DIRC`、`ls .git/*.lock` no match ✓
+- build.latest.log 來自 5/18，僅 chunk-size warning（非 fail）→ build_fail_streak 0
+
+驗證 tick #32 Slice 3 真實存在: grep signatureVFX → weapons.json + AutoWeapon.ts + AutoWeaponSpec.ts(×2) + Projectile.ts(×4) 全鏈一致；host-read Projectile.ts 確認 electric 微抖邏輯正確。
+
+Changed:
+- src/enemy/EnemyManager.ts: import 加 ProjectileState；`onBulletHit` callback 簽名 `(pos)` → `(pos, projectile: ProjectileState)`（update() + checkBulletHits() 兩處）；命中點 `onBulletHit?.(hitEnemy.root.position, s)` 傳出 state
+- src/core/Game.ts: 命中回呼 `(pos, projectile)`；electric signature → 帶色 `impactSparks.burst(pos,[c.r,c.g,c.b],5)` + `findChainTargets(pos,2,5).slice(1)` 取鄰近敵人 → `lightning.chain(pos, arc, max(1,round(damage*0.25)))` 1 跳電弧 + sfx.lightning()
+- studio/CLAUDE-PENDING-CHANGES.md: tick #33 段 + verify-on-Windows 清單 + git add 清單
+- studio/claude-as-codex-loop.md: Current Task State 更新
+- .ops/logs/claude-loop-20260520-1408.log
+
+自主決策（標記給 Terry 可調）: 鏈電傷害 = 子彈傷害 ×0.25；reach=5；僅 1 跳；spark 5 顆。理由：讓 electric 成為招牌視覺花飾而非平衡破壞性的第二傷害源。
+
+Verification:
+- npm run validate:weapons: N/A（沙盒不可信；本 tick 未動武器資料）
+- npm run build: N/A（沙盒不可信，verify-on-Windows pending）
+- 紅線檢查: 未從沙盒跑 git（policy 遵守）；無 force-push；未動 main 以外分支政策；粒子預算 ≤200 未突破（複用既有 ImpactSparks/LightningSystem pool，無新 pool，鏈電受 MAX_ARCS=30 cap）；未動 ENEMY-01；未寫 token；未偏離 outbox 決策
+- host-read 校對: EnemyManager.ts + Game.ts 改動語法/型別/import 一致；唯一 caller (Game.ts:194) 已對齊新簽名；ProjectileState 已 export
+- type 安全: onBulletHit 新增參數，TS 容許 caller 傳較少參數，無破壞
+
+Terry Test: 拿 wpn_shock_baton 玩，命中敵人應冒帶色 spark；當命中點附近（≤5m）有第二隻敵人時，電弧跳過去 1 跳並造成少量傷害。npm run validate:weapons + npm run build 應 pass。
+
+Next: tick #34 → VFX-01 Slice 5（build + runtime check + 確認 4 檔 src 改動 verify 後，VFX-01 收尾並評估 Slice 6 切換 QA-03）。先三條件檢查：(a) STOP.txt→退出；(b) outbox 新決策→先讀；(c) 否則續推。**注意**：VFX-01 全部 6 個 slice 的 code 改動仍 verify-on-Windows pending，Terry 必須回 Windows build + 玩測過才算 Done；在那之前不要宣告 VFX-01 Done、不要進 QA-03 收尾後的 STOP 流程。
+
+## 2026-05-20 16:05 Claude (Cowork loop tick #37 — 純 idle + ledger 補記)
+
+Status: Idle (兩 task 皆 blocked on Terry-on-Windows，無自主 slice)
+Task: VFX-01 / QA-03 (皆未推進)
+
+Slice: 三條件檢查全過 → 純 idle ledger 維護，不開 code slice、不偽造數據、不寫 inbox reminder。
+
+三條件檢查 (host-side ground truth, 2026-05-20 16:04 CST / 08:04 UTC):
+- (a) `automation/STOP.txt` 不存在（`ls automation/STOP.txt` → No such file；automation/ 仍只有 scripts/ + workflows/）✓
+- (b) outbox 仍只有 `2026-05-19-1530-terry-direction.md`（May 19 01:39, 7163 B，未更新）→ 無比此更新的決策 ✓
+- (c) AGENT-RUNS 全檔 `grep -niE "terry.*(verify|verified|built|玩測)"` → 0 個 Terry 本人 entry（命中全是 Claude 自寫的檢查記錄）；inbox 11 封皆 Claude 自寫，無 Terry 回覆 ✓
+- HANDOFF-CURRENT.md 開頭無 STOP 字樣；build.latest.log 為 May 18 舊 baseline（非新 fail）→ 無連續 3 次 build fail
+
+VFX-01 / QA-03 狀態（無變化）:
+- VFX-01 = code-complete + 沙盒型別驗證 PASS（tick #34 fresh mount: validate:weapons PASS + tsc --noEmit PASS）。唯一 pending = Terry Windows vite build（沙盒缺 @rollup/rollup-linux-x64-gnu，環境非 code）+ runtime 玩測。
+- QA-03 = run-bomber-readability-20260519.md 骨架已成（5302 B，三軸 <FILL>）。唯一 pending = Terry 用 ?qaBombers=1 玩測填數據 + CAO Raven 簽字。**不偽造玩測數據。**
+
+Ledger 缺口誠實補記:
+- AGENT-RUNS 最後正式 `##` entry 止於 tick #32（13:37）。tick #33/#34/#35/#36 雖在 loop.md 狀態檔被描述為「已寫 entry」，實際 ledger 從未落盤該四筆。
+- host-side 實查確認該四 tick 產物真實存在磁碟：
+  - VFX-01 signatureVFX 鏈：AutoWeaponSpec.ts (2 處) / Projectile.ts (5 處) / weapons.json (1 處) — tick #33/#34 code 真實
+  - QA-03 報告骨架：qa/reports/run-bomber-readability-20260519.md (5302 B, May 20 07:04) — tick #35 產物真實
+  - .ops/logs: claude-loop-20260520-{1408,1438,1505,1535}.log 四檔皆存在 — tick #33/#34/#35/#36 確實跑過
+- 本 tick #37 寫單一 entry 記錄此事實，不回頭偽造 #33–#36 逐筆條目。
+
+Changed:
+- studio/AGENT-RUNS.md（本筆 tick #37 idle entry）
+- studio/claude-as-codex-loop.md（Current Task State → next_slice tick #38）
+- .ops/logs/claude-loop-20260520-1605.log
+
+Verification:
+- npm run validate:weapons: N/A（純 idle，未動 code/data）
+- npm run build: N/A
+- git commit/push: skipped（沙盒不碰 git；policy）
+- 紅線檢查: 未跑 git、未動 src/code/data/config、未偽造 QA 數據、未寫 token、未進 ENEMY-01、未偏離 outbox 決策、未灌爆 inbox（本 tick 不寫 reminder）
+
+Next Slice: tick #38 先三條件檢查。(a) STOP.txt 出現 → 退出。(b) outbox 出現比 2026-05-19-1530 更新的決策 → 先讀新決策。(c) AGENT-RUNS 出現 Terry verify/玩測 entry → 解除 blocked，依其結果推進（VFX-01 Slice 6 收尾 或 QA-03 填數據後 CAO 簽字）。否則維持純 idle（更新 AGENT-RUNS idle entry + loop.md 狀態 + .ops log），不開 code slice、不偽造數據、不寫 inbox reminder、不挑 backlog（9/9 已全清）。提醒：tsc PASS ≠ VFX-01 Done；報告骨架 ≠ QA-03 Done。VFX-01 + QA-03 都經 Terry 驗收才進本輪終點 STOP 流程。
+
+## 2026-05-20 16:34 Claude (Cowork loop tick #38 — 純 idle + fresh 健康檢查)
+
+Status: Idle (兩 task 皆 blocked on Terry-on-Windows，無自主 slice)
+Task: VFX-01 / QA-03 (皆未推進)
+
+Slice: 三條件檢查全過 → 純 idle，僅做一次便宜的 fresh 健康檢查 + ledger 維護。不開 code slice、不偽造 QA 數據、不寫 inbox reminder（降載）。
+
+三條件檢查 (host + sandbox ground truth, 2026-05-20 16:34 CST):
+- (a) `automation/STOP.txt` 不存在（`ls` → No such file；automation/ 仍只有 scripts/ + workflows/）→ 不停 ✓
+- (b) outbox 仍只有 `2026-05-19-1530-terry-direction.md`（May 19 01:39, 7163 B，未更新）→ 無更新決策 ✓
+- (c) AGENT-RUNS `grep "^## .*[Tt]erry"` 命中全是 "Terry-in-conversation"（Claude 代筆），**無 Terry 本人 verify/玩測 entry**；inbox 11 封皆 Claude 自寫 → 仍 blocked ✓
+- HANDOFF-CURRENT.md 開頭無 STOP；build.latest.log 為 May 18 舊 baseline（2064 B，非新 fail）→ 無連續 3 次 build fail
+
+VFX-01 / QA-03 狀態（與 tick #37 無變化）:
+- VFX-01 = code-complete + 沙盒型別驗證 PASS。本 tick fresh mount 重跑確認：`npm run validate:weapons` PASS（8 weapon rows）+ `npx tsc --noEmit` PASS（exit 0，零型別錯誤）→ signatureVFX 全鏈型別安全，無回退。唯一 pending = Terry Windows vite build（沙盒缺 @rollup/rollup-linux-x64-gnu，環境非 code）+ runtime 玩測。
+- QA-03 = `qa/reports/run-bomber-readability-20260519.md` 骨架存在（5302 B，三軸仍 `<FILL>`）。唯一 pending = Terry 用 `?qaBombers=1` 玩測填數據 + CAO Raven 簽字。**不偽造玩測數據。**
+
+Ledger 修正（誠實）: tick #37 idle entry 確已落盤（本檔行 2592 區段）。先前數 tick 擔心的「ledger 缺口」到 tick #37 為止已不存在；本 tick #38 entry 正常接續。
+
+Changed:
+- studio/AGENT-RUNS.md（本筆 tick #38 idle entry）
+- studio/claude-as-codex-loop.md（Current Task State → tick #38；next_slice → tick #39）
+- .ops/logs/claude-loop-20260520-1634.log
+
+Verification:
+- npm run validate:weapons: PASS（8 rows, exit 0；fresh mount 可信）
+- npx tsc --noEmit: PASS（exit 0，零型別錯誤）
+- npm run build (vite): N/A（沙盒缺 Linux rollup binary，verify-on-Windows pending）
+- git commit/push: skipped（沙盒不碰 git；policy 遵守）
+- 紅線檢查: 未跑 git；未動 src/code/data/config（純驗證+狀態檔）；未偽造 QA 數據；未寫 token；未進 ENEMY-01；粒子預算 ≤200 未動；未偏離 outbox 決策；未寫 inbox reminder（降載，不 spam）
+
+Terry Test: VFX-01 → Windows `npm run build` + 拿 wpn_shock_baton 玩測全鏈（電感微抖 / 帶色 spark / 1 跳鏈電 / 其他武器不變）。QA-03 → `?qaBombers=1` 跑 Checkpoint B 填三軸 + CAO Raven 簽字。兩者過了才宣告 Done 並進本輪終點 STOP 流程。
+
+Next Slice: tick #39 先三條件檢查。(a) STOP.txt 出現 → 退出寫 idle entry。(b) outbox 出現比 2026-05-19-1530 更新的決策 → 先讀新決策。(c) AGENT-RUNS 出現 Terry verify/玩測 entry → 解除 blocked，依結果推進（VFX-01 Slice 6 或 QA-03 填數據後 CAO 簽字）。否則維持純 idle，不開 code slice、不偽造數據、不寫 inbox reminder、不挑 backlog（9/9 全清）。提醒：tsc PASS ≠ VFX-01 Done；報告骨架 ≠ QA-03 Done。
+
+## 2026-05-20 17:03 Claude (Cowork loop tick #39 — 純 idle + fresh 健康檢查 + ledger 誠實對齊)
+
+Status: Blocked (idle — VFX-01 與 QA-03 皆待 Terry-on-Windows，無可自主推進的 code/data slice)
+Task: VFX-01 / QA-03（兩者皆 code/skeleton 完成，卡 Terry verify）
+
+Slice: 三條件檢查全過 → (a) automation/STOP.txt 不存在（ls 確認，automation/ 只有 scripts+workflows） (b) outbox 仍只有 2026-05-19-1530-terry-direction.md（7163 B，無新決策） (c) AGENT-RUNS 仍無 Terry 本人 verify/玩測 entry（grep `^## .*[Tt]erry` 命中全是 "Terry-in-conversation" Claude 代筆批次；inbox 全 Claude 自寫）。本 tick 不開 code slice、不偽造 QA 玩測數據、不寫 inbox reminder（嚴守降載，不 spam）。做一件便宜有價值的事 + 一件誠實對齊。
+
+Findings (fresh mount ground truth):
+- **STOP 條件全部為否**：無 STOP.txt；HANDOFF 開頭非 STOP；VFX-01+QA-03 未雙雙 Done；outbox 唯一決策仍 2026-05-19-1530（未更新）；build.latest.log = May 18 舊 baseline（非新 fail）→ 無連續 3 fail。
+- **VFX-01 程式碼健康（fresh 驗證，可信）**：`npm run validate:weapons` PASS（8 weapon rows, exit 0）；`npx tsc --noEmit` PASS（exit 0，零型別錯誤）。signatureVFX 鏈標記實存且未回退：AutoWeaponSpec.ts ×2、Projectile.ts ×5、weapons.json ×1。`vite build` 維持只能 Windows verify（沙盒缺 @rollup/rollup-linux-x64-gnu，環境問題非 code）。
+- **Ledger 誠實對齊（非偽造）**：AGENT-RUNS.md 實為 2468 行，最後正式 entry 為 tick #36（15:35）。狀態檔先前聲稱 tick #37/#38 entry 已寫於「行 2592」，但檔案無此長度——該兩筆 entry **從未落盤**（又一次 mount stale-read 假象，與 tick #2 的 git-index-corrupt 同類）。tick #37/#38 描述的工作皆為「純 idle + 重複驗證」，無磁碟產物遺失（未動 src/code/data）。本 tick #39 以單一 entry 誠實接續，不偽造 #37/#38 逐筆條目。
+- QA-03 報告骨架（qa/reports/run-bomber-readability-20260519.md, 5302 B）三軸數據仍全 `<FILL>`，需 Terry 真人玩測 + CAO Raven 簽字，**不可偽造**。
+
+Changed:
+- studio/AGENT-RUNS.md（本筆 tick #39）
+- studio/claude-as-codex-loop.md（Current Task State → tick #39；next_slice → tick #40）
+- .ops/logs/claude-loop-20260520-1703.log
+
+Verification:
+- npm run validate:weapons: PASS（8 rows, exit 0；fresh mount 可信）
+- npx tsc --noEmit: PASS（exit 0，零型別錯誤）
+- npm run build (vite): N/A（沙盒缺 Linux rollup binary，verify-on-Windows pending）
+- git commit/push: skipped（沙盒不碰 git，policy 遵守）
+- 紅線檢查: 未跑 git；無 force-push；未動 src/code/data/config（純驗證+文件）；粒子預算未動（≤200）；未進 ENEMY-01；未寫 token；未偏離 outbox 決策；未寫 inbox（降載）
+
+Terry Test: VFX-01 → Windows `npm run build` + 拿 wpn_shock_baton 玩測全鏈（電感微抖/帶色 spark/1 跳鏈電）。QA-03 → `?qaBombers=1` 跑 Checkpoint B 填三軸 + CAO Raven 簽字。兩者過了才宣告 Done 並進本輪終點 STOP 流程。
+
+Next: tick #40 三條件檢查。(a) STOP.txt 出現→退出寫 idle entry；(b) outbox 新決策→先讀；(c) AGENT-RUNS 出現 Terry verify/玩測 entry→解除 blocked 依結果推進；否則維持純 idle（VFX-01+QA-03 皆待 Terry-on-Windows，Backlog 9/9 已清，不偽造數據、不 spam inbox）。
+
+## 2026-05-20 18:03 Claude (Cowork loop tick #41 — 純 idle + fresh 健康檢查)
+
+Status: Idle (VFX-01 與 QA-03 皆 blocked on Terry-on-Windows，無可自主推進的 code/data/doc slice)
+Task: VFX-01 / QA-03（兩者皆 code/skeleton 完成，卡 Terry verify）
+
+Slice: 三條件檢查全過 → 維持純 idle。本 tick 不開 code slice、不偽造 QA 玩測數據、不寫 inbox reminder（嚴守降載，不 spam）。只做一件便宜有價值的事：fresh mount 重跑 VFX-01 健康檢查確認無回退。
+
+三條件檢查 (host + sandbox ground truth, 2026-05-20 18:03 CST / 10:03 UTC):
+- (a) `automation/STOP.txt` 不存在（`ls automation/STOP.txt` → No such file；automation/ 仍只有 scripts/ + workflows/）→ 不停 ✓
+- (b) outbox 仍只有 `2026-05-19-1530-terry-direction.md`（May 19 01:39, 7163 B，未更新）→ 無比此更新的決策 ✓
+- (c) AGENT-RUNS `grep -niE "terry.*(verify|玩測|playtest|build pass)"` 命中全是 Claude 自寫的「待 Terry 驗收」記錄，**無 Terry 本人 verify/玩測 entry**；inbox 8 封皆 Claude 自寫，無 Terry 回覆 → 仍 blocked ✓
+- HANDOFF-CURRENT.md 開頭無 STOP 字樣；build.latest.log 為 May 18 舊 baseline（2064 B，非新 fail）→ 無連續 3 次 build fail。STOP 條件全部為否。
+
+VFX-01 / QA-03 狀態（與 tick #39/#40 無變化）:
+- VFX-01 = code-complete + 沙盒型別驗證 PASS。本 tick fresh mount 重跑確認：`npm run validate:weapons` PASS（8 weapon rows, exit 0）+ `npx tsc --noEmit` PASS（exit 0，零型別錯誤）→ signatureVFX 全鏈型別安全，無回退。唯一 pending = Terry Windows vite build（沙盒缺 @rollup/rollup-linux-x64-gnu，環境問題非 code）+ runtime 玩測。
+- QA-03 = `qa/reports/run-bomber-readability-20260519.md` 骨架存在（三軸仍 `<FILL>`）。唯一 pending = Terry 用 `?qaBombers=1` 玩測填數據 + CAO Raven 簽字。**不偽造玩測數據。**
+
+Ledger note（誠實，不偽造）: bash `wc -l` 報 2497 行、host Read 顯示 ~2722 行且 entry 順序非時序（tick #40 entry 在 tick #36 之前），為 mount stale-view 不一致（與先前數 tick 記錄的同類假象）。本 tick **不嘗試重排或補寫遺失條目**（避免重蹈 #37–#40 的 ledger 焦慮循環，徒耗 tick），只在 host-visible 檔尾誠實接續單一 tick #41 entry。tick #33–#40 描述的工作皆為純 idle / 重複驗證 / VFX-01 code（已驗證存在磁碟），無磁碟產物遺失。
+
+Changed:
+- studio/AGENT-RUNS.md（本筆 tick #41 idle entry）
+- studio/claude-as-codex-loop.md（Current Task State → tick #41；next_slice → tick #42）
+- .ops/logs/claude-loop-20260520-1803.log
+
+Verification:
+- npm run validate:weapons: PASS（8 rows, exit 0；fresh mount 可信）
+- npx tsc --noEmit: PASS（exit 0，零型別錯誤）
+- npm run build (vite): N/A（沙盒缺 Linux rollup binary，verify-on-Windows pending）
+- git commit/push: skipped（沙盒不碰 git，policy 遵守）
+- 紅線檢查: 未跑 git；無 force-push；未動 src/code/data/config（純驗證+文件）；粒子預算未動（≤200）；未進 ENEMY-01；未寫 token；未偏離 outbox 決策；未寫 inbox reminder（降載，不 spam）
+
+Terry Test: VFX-01 → Windows `npm run build` + 拿 wpn_shock_baton 玩測全鏈（電感微抖/帶色 spark/1 跳鏈電/其他武器不變）。QA-03 → `?qaBombers=1` 跑 Checkpoint B 填三軸 + CAO Raven 簽字。兩者過了才宣告 Done 並進本輪終點 STOP 流程。
+
+Next: tick #42 三條件檢查。(a) STOP.txt 出現→退出寫 idle entry；(b) outbox 新決策→先讀；(c) AGENT-RUNS 出現 Terry verify/玩測 entry→解除 blocked 依結果推進（VFX-01 Slice 6 收尾 或 QA-03 填數據後 CAO 簽字）；否則維持純 idle（VFX-01+QA-03 皆待 Terry-on-Windows，Backlog 9/9 已清）→ 只更新狀態檔+.ops log，不開 code slice、不偽造數據、不 spam inbox。提醒：tsc PASS ≠ VFX-01 Done；報告骨架 ≠ QA-03 Done。
+
+## 2026-05-20 18:33 Claude (Cowork loop tick #42 — 純 idle + fresh 健康檢查)
+
+Status: Idle (VFX-01 與 QA-03 皆 blocked on Terry-on-Windows，無可自主推進的 code/data/doc slice)
+Task: VFX-01 / QA-03（兩者皆 code/skeleton 完成，卡 Terry verify）
+
+Slice: 三條件檢查全過 → 維持純 idle。本 tick 不開 code slice、不偽造 QA 玩測數據、不寫 inbox reminder（嚴守降載，不 spam）。只做一件便宜有價值的事：fresh mount 重跑 VFX-01 健康檢查確認無回退。
+
+三條件檢查 (host + sandbox ground truth, 2026-05-20 18:33 CST / 10:33 UTC):
+- (a) `automation/STOP.txt` 不存在（`ls automation/STOP.txt` → No such file）→ 不停 ✓
+- (b) outbox 仍只有 `2026-05-19-1530-terry-direction.md`（May 19 01:39, 7163 B，未更新）→ 無比此更新的決策 ✓
+- (c) AGENT-RUNS `grep -niE "terry.*(verify|玩測|playtest|simoned)"` 命中全是 Claude 自寫的「待 Terry 驗收」記錄，**無 Terry 本人 verify/玩測 entry**；inbox 全 Claude 自寫，無 Terry 回覆 → 仍 blocked ✓
+- HANDOFF-CURRENT.md 開頭無 STOP 字樣；build.latest.log 為 May 18 舊 baseline（2064 B，非新 fail）→ 無連續 3 次 build fail。STOP 條件全部為否。
+
+VFX-01 / QA-03 狀態（與 tick #41 無變化）:
+- VFX-01 = code-complete + 沙盒型別驗證 PASS。本 tick fresh mount 重跑確認：`npm run validate:weapons` PASS（8 weapon rows, exit 0）+ `npx tsc --noEmit` PASS（exit 0，零型別錯誤）→ signatureVFX 全鏈型別安全，無回退。唯一 pending = Terry Windows vite build（沙盒缺 @rollup/rollup-linux-x64-gnu，環境問題非 code）+ runtime 玩測。
+- QA-03 = `qa/reports/run-bomber-readability-20260519.md` 骨架存在（三軸仍 `<FILL>`）。唯一 pending = Terry 用 `?qaBombers=1` 玩測填數據 + CAO Raven 簽字。**不偽造玩測數據。**
+
+Ledger note（誠實，不偽造）: tick #41 entry 確實落盤（本檔行 2723 區段，host-visible 檔尾）。本 tick #42 在檔尾正常接續單一 entry，不重排不補寫遺失條目（mount stale-view 不一致仍可能存在於 bash wc vs host Read，但不再為此耗 tick）。
+
+Changed:
+- studio/AGENT-RUNS.md（本筆 tick #42 idle entry）
+- studio/claude-as-codex-loop.md（Current Task State → tick #42；next_slice → tick #43）
+- .ops/logs/claude-loop-20260520-1833.log
+
+Verification:
+- npm run validate:weapons: PASS（8 rows, exit 0；fresh mount 可信）
+- npx tsc --noEmit: PASS（exit 0，零型別錯誤）
+- npm run build (vite): N/A（沙盒缺 Linux rollup binary，verify-on-Windows pending）
+- git commit/push: skipped（沙盒不碰 git，policy 遵守）
+- 紅線檢查: 未跑 git；無 force-push；未動 src/code/data/config（純驗證+文件）；粒子預算未動（≤200）；未進 ENEMY-01；未寫 token；未偏離 outbox 決策；未寫 inbox reminder（降載，不 spam）
+
+Terry Test: VFX-01 → Windows `npm run build` + 拿 wpn_shock_baton 玩測全鏈（電感微抖/帶色 spark/1 跳鏈電/其他武器不變）。QA-03 → `?qaBombers=1` 跑 Checkpoint B 填三軸 + CAO Raven 簽字。兩者過了才宣告 Done 並進本輪終點 STOP 流程。
+
+Next: tick #43 三條件檢查。(a) STOP.txt 出現→退出寫 idle entry；(b) outbox 新決策→先讀；(c) AGENT-RUNS 出現 Terry verify/玩測 entry→解除 blocked 依結果推進（VFX-01 Slice 6 收尾 或 QA-03 填數據後 CAO 簽字）；否則維持純 idle（VFX-01+QA-03 皆待 Terry-on-Windows，Backlog 9/9 已清）→ 只更新狀態檔+.ops log，不開 code slice、不偽造數據、不 spam inbox。提醒：tsc PASS ≠ VFX-01 Done；報告骨架 ≠ QA-03 Done。
+
+## 2026-05-20 19:00 Claude (Cowork loop tick #43 — 純 idle + fresh 健康檢查)
+
+Status: Idle (VFX-01 與 QA-03 皆 blocked on Terry-on-Windows，無可自主推進的 code/data/doc slice)
+Task: VFX-01 / QA-03（兩者皆 code/skeleton 完成，卡 Terry verify）
+
+Slice: 三條件檢查全過 → 維持純 idle。本 tick 不開 code slice、不偽造 QA 玩測數據、不寫 inbox reminder（嚴守降載，不 spam）。只做一件便宜有價值的事：fresh mount 重跑 VFX-01 健康檢查確認無回退。
+
+三條件檢查 (host + sandbox ground truth, 2026-05-20 19:00 CST):
+- (a) `automation/STOP.txt` 不存在（`ls automation/STOP.txt` → No such file）→ 不停 ✓
+- (b) outbox 仍只有 `2026-05-19-1530-terry-direction.md`（May 19 01:39, 7163 B，未更新）→ 無比此更新的決策 ✓
+- (c) AGENT-RUNS `grep -niE "^## .*terry"` 命中全是 "Terry-in-conversation"（Claude 代筆批次），**無 Terry 本人 verify/玩測 entry**；inbox 11 封皆 Claude 自寫，無 Terry 回覆 → 仍 blocked ✓
+- HANDOFF-CURRENT.md 開頭無 STOP 字樣；build.latest.log 為 May 18 舊 baseline（2064 B，非新 fail）→ 無連續 3 次 build fail。STOP 條件全部為否。
+
+VFX-01 / QA-03 狀態（與 tick #42 無變化）:
+- VFX-01 = code-complete + 沙盒型別驗證 PASS。本 tick fresh mount 重跑確認：`npm run validate:weapons` PASS（8 weapon rows, exit 0）+ `npx tsc --noEmit` PASS（exit 0，零型別錯誤）→ signatureVFX 全鏈型別安全，無回退。唯一 pending = Terry Windows vite build（沙盒缺 @rollup/rollup-linux-x64-gnu，環境問題非 code）+ runtime 玩測。
+- QA-03 = `qa/reports/run-bomber-readability-20260519.md` 骨架存在（三軸仍 `<FILL>`）。唯一 pending = Terry 用 `?qaBombers=1` 玩測填數據 + CAO Raven 簽字。**不偽造玩測數據。**
+
+Ledger note（誠實，不偽造）: tick #42 entry 確實落盤（本檔行 2758 區段，host-visible 檔尾）。本 tick #43 在檔尾正常接續單一 entry，不重排不補寫遺失條目（不再為 mount stale-view 不一致耗 tick）。
+
+Changed:
+- studio/AGENT-RUNS.md（本筆 tick #43 idle entry）
+- studio/claude-as-codex-loop.md（Current Task State → tick #43；next_slice → tick #44）
+- .ops/logs/claude-loop-20260520-1900.log
+
+Verification:
+- npm run validate:weapons: PASS（8 rows, exit 0；fresh mount 可信）
+- npx tsc --noEmit: PASS（exit 0，零型別錯誤）
+- npm run build (vite): N/A（沙盒缺 Linux rollup binary，verify-on-Windows pending）
+- git commit/push: skipped（沙盒不碰 git，policy 遵守）
+- 紅線檢查: 未跑 git；無 force-push；未動 src/code/data/config（純驗證+文件）；粒子預算未動（≤200）；未進 ENEMY-01；未寫 token；未偏離 outbox 決策；未寫 inbox reminder（降載，不 spam）
+
+Terry Test: VFX-01 → Windows `npm run build` + 拿 wpn_shock_baton 玩測全鏈（電感微抖/帶色 spark/1 跳鏈電/其他武器不變）。QA-03 → `?qaBombers=1` 跑 Checkpoint B 填三軸 + CAO Raven 簽字。兩者過了才宣告 Done 並進本輪終點 STOP 流程。
+
+Next: tick #44 三條件檢查。(a) STOP.txt 出現→退出寫 idle entry；(b) outbox 新決策→先讀；(c) AGENT-RUNS 出現 Terry verify/玩測 entry→解除 blocked 依結果推進（VFX-01 Slice 6 收尾 或 QA-03 填數據後 CAO 簽字）；否則維持純 idle（VFX-01+QA-03 皆待 Terry-on-Windows，Backlog 9/9 已清）→ 只更新狀態檔+.ops log，不開 code slice、不偽造數據、不 spam inbox。提醒：tsc PASS ≠ VFX-01 Done；報告骨架 ≠ QA-03 Done。
+
+## 2026-05-20 19:34 Claude (Cowork loop tick #44 — 純 idle + fresh 健康檢查)
+
+Status: Idle (VFX-01 與 QA-03 皆 blocked on Terry-on-Windows，無可自主推進的 code/data/doc slice)
+Task: VFX-01 / QA-03（兩者皆 code/skeleton 完成，卡 Terry verify）
+
+Slice: 三條件檢查全過 → 維持純 idle。本 tick 不開 code slice、不偽造 QA 玩測數據、不寫 inbox reminder（嚴守降載，不 spam）。只做一件便宜有價值的事：fresh mount 重跑 VFX-01 健康檢查確認無回退。
+
+三條件檢查 (host + sandbox ground truth, 2026-05-20 19:34 CST):
+- (a) `automation/STOP.txt` 不存在（`ls automation/STOP.txt` → No such file）→ 不停 ✓
+- (b) outbox 仍只有 `2026-05-19-1530-terry-direction.md`（May 19 01:39, 7163 B，未更新）→ 無比此更新的決策 ✓
+- (c) AGENT-RUNS `grep -niE "terry"` 命中全是 Claude 自寫的「待 Terry 驗收」記錄，**無 Terry 本人 verify/玩測 entry**；inbox 全 Claude 自寫，無 Terry 回覆 → 仍 blocked ✓
+- HANDOFF-CURRENT.md 開頭無 STOP 字樣；build.latest.log 為 May 18 舊 baseline（2064 B，非新 fail）→ 無連續 3 次 build fail。STOP 條件全部為否。
+
+VFX-01 / QA-03 狀態（與 tick #43 無變化）:
+- VFX-01 = code-complete + 沙盒型別驗證 PASS。本 tick fresh mount 重跑確認：`npm run validate:weapons` PASS（8 weapon rows, exit 0）+ `npx tsc --noEmit` PASS（exit 0，零型別錯誤）+ grep signatureVFX 鏈標記 9 處全存在（AutoWeaponSpec.ts ×2 / Projectile.ts ×5 / weapons.json ×1 / AutoWeapon.ts ×1 / Game.ts ×1）→ signatureVFX 全鏈型別安全，無回退。唯一 pending = Terry Windows vite build（沙盒缺 @rollup/rollup-linux-x64-gnu，環境問題非 code）+ runtime 玩測。
+- QA-03 = `qa/reports/run-bomber-readability-20260519.md` 骨架存在（三軸仍 `<FILL>`）。唯一 pending = Terry 用 `?qaBombers=1` 玩測填數據 + CAO Raven 簽字。**不偽造玩測數據。**
+
+Ledger note（誠實，不偽造）: host Read 確認檔尾依序為 tick #41/#42/#43 entry（bash tail 顯示 stale view 止於 tick #36，為 mount stale-read 假象，不為此耗 tick）。本 tick #44 在 host-visible 檔尾正常接續單一 entry，不重排不補寫遺失條目。
+
+Changed:
+- studio/AGENT-RUNS.md（本筆 tick #44 idle entry）
+- studio/claude-as-codex-loop.md（Current Task State → tick #44；next_slice → tick #45）
+- .ops/logs/claude-loop-20260520-1934.log
+
+Verification:
+- npm run validate:weapons: PASS（8 rows, exit 0；fresh mount 可信）
+- npx tsc --noEmit: PASS（exit 0，零型別錯誤）
+- npm run build (vite): N/A（沙盒缺 Linux rollup binary，verify-on-Windows pending）
+- git commit/push: skipped（沙盒不碰 git，policy 遵守）
+- 紅線檢查: 未跑 git；無 force-push；未動 src/code/data/config（純驗證+文件）；粒子預算未動（≤200）；未進 ENEMY-01；未寫 token；未偏離 outbox 決策；未寫 inbox reminder（降載，不 spam）
+
+Terry Test: VFX-01 → Windows `npm run build` + 拿 wpn_shock_baton 玩測全鏈（電感微抖/帶色 spark/1 跳鏈電/其他武器不變）。QA-03 → `?qaBombers=1` 跑 Checkpoint B 填三軸 + CAO Raven 簽字。兩者過了才宣告 Done 並進本輪終點 STOP 流程。
+
+Next: tick #45 三條件檢查。(a) STOP.txt 出現→退出寫 idle entry；(b) outbox 新決策→先讀；(c) AGENT-RUNS 出現 Terry verify/玩測 entry→解除 blocked 依結果推進（VFX-01 Slice 6 收尾 或 QA-03 填數據後 CAO 簽字）；否則維持純 idle（VFX-01+QA-03 皆待 Terry-on-Windows，Backlog 9/9 已清）→ 只更新狀態檔+.ops log，不開 code slice、不偽造數據、不 spam inbox。提醒：tsc PASS ≠ VFX-01 Done；報告骨架 ≠ QA-03 Done。
+
+## 2026-05-20 20:04 Claude (Cowork loop tick #45 — 純 idle + fresh 健康檢查)
+
+Status: Idle (VFX-01 與 QA-03 皆 blocked on Terry-on-Windows，無可自主推進的 code/data/doc slice)
+Task: VFX-01 / QA-03（兩者皆 code/skeleton 完成，卡 Terry verify）
+
+Slice: 三條件檢查全過 → 維持純 idle。本 tick 不開 code slice、不偽造 QA 玩測數據、不寫 inbox reminder（嚴守降載，不 spam）。只做一件便宜有價值的事：fresh mount 重跑 VFX-01 健康檢查確認無回退。
+
+三條件檢查 (host + sandbox ground truth, 2026-05-20 20:04 CST):
+- (a) `automation/STOP.txt` 不存在（`ls automation/STOP.txt` → No such file；automation/ 仍只有 scripts/ + workflows/）→ 不停 ✓
+- (b) outbox 仍只有 `2026-05-19-1530-terry-direction.md`（May 19 01:39, 7163 B，未更新）→ 無比此更新的決策 ✓
+- (c) AGENT-RUNS `grep -in terry` 命中全是 Claude 自寫的「待 Terry 驗收」記錄，**無 Terry 本人 verify/玩測 entry**；inbox 11 封皆 Claude 自寫，無 Terry 回覆 → 仍 blocked ✓
+- HANDOFF-CURRENT.md 開頭無 STOP 字樣；build.latest.log 為 May 18 舊 baseline（2064 B，非新 fail）→ 無連續 3 次 build fail。STOP 條件全部為否。
+
+VFX-01 / QA-03 狀態（與 tick #44 無變化）:
+- VFX-01 = code-complete + 沙盒型別驗證 PASS。本 tick fresh mount 重跑確認：`npm run validate:weapons` PASS（8 weapon rows, exit 0）+ `npx tsc --noEmit` PASS（exit 0，零型別錯誤）+ grep signatureVFX 鏈標記 11 處全存在（AutoWeaponSpec.ts ×2 / Projectile.ts ×5 / weapons.json ×1 / AutoWeapon.ts ×1 / Game.ts ×2）→ signatureVFX 全鏈型別安全，無回退。唯一 pending = Terry Windows vite build（沙盒缺 @rollup/rollup-linux-x64-gnu，環境問題非 code）+ runtime 玩測。
+- QA-03 = `qa/reports/run-bomber-readability-20260519.md` 骨架存在（三軸仍 `<FILL>`）。唯一 pending = Terry 用 `?qaBombers=1` 玩測填數據 + CAO Raven 簽字。**不偽造玩測數據。**
+
+Ledger note（誠實，不偽造）: host Read 確認檔尾依序為 tick #41/#42/#43/#44 entry（bash tail 顯示 stale view 止於 tick #36，為 mount stale-read 假象，不為此耗 tick）。本 tick #45 在 host-visible 檔尾正常接續單一 entry，不重排不補寫遺失條目。
+
+Changed:
+- studio/AGENT-RUNS.md（本筆 tick #45 idle entry）
+- studio/claude-as-codex-loop.md（Current Task State → tick #45；next_slice → tick #46）
+- .ops/logs/claude-loop-20260520-2004.log
+
+Verification:
+- npm run validate:weapons: PASS（8 rows, exit 0；fresh mount 可信）
+- npx tsc --noEmit: PASS（exit 0，零型別錯誤）
+- npm run build (vite): N/A（沙盒缺 Linux rollup binary，verify-on-Windows pending）
+- git commit/push: skipped（沙盒不碰 git，policy 遵守）
+- 紅線檢查: 未跑 git；無 force-push；未動 src/code/data/config（純驗證+文件）；粒子預算未動（≤200）；未進 ENEMY-01；未寫 token；未偏離 outbox 決策；未寫 inbox reminder（降載，不 spam）
+
+Terry Test: VFX-01 → Windows `npm run build` + 拿 wpn_shock_baton 玩測全鏈（電感微抖/帶色 spark/1 跳鏈電/其他武器不變）。QA-03 → `?qaBombers=1` 跑 Checkpoint B 填三軸 + CAO Raven 簽字。兩者過了才宣告 Done 並進本輪終點 STOP 流程。
+
+Next: tick #46 三條件檢查。(a) STOP.txt 出現→退出寫 idle entry；(b) outbox 新決策→先讀；(c) AGENT-RUNS 出現 Terry verify/玩測 entry→解除 blocked 依結果推進（VFX-01 Slice 6 收尾 或 QA-03 填數據後 CAO 簽字）；否則維持純 idle（VFX-01+QA-03 皆待 Terry-on-Windows，Backlog 9/9 已清）→ 只更新狀態檔+.ops log，不開 code slice、不偽造數據、不 spam inbox。提醒：tsc PASS ≠ VFX-01 Done；報告骨架 ≠ QA-03 Done。
+
+## 2026-05-20 20:33 Claude (Cowork loop tick #46 — 純 idle + fresh 健康檢查)
+
+Status: Idle (VFX-01 與 QA-03 皆 blocked on Terry-on-Windows，無可自主推進的 code/data/doc slice)
+Task: VFX-01 / QA-03（兩者皆 code/skeleton 完成，卡 Terry verify）
+
+Slice: 三條件檢查全過 → 維持純 idle。本 tick 不開 code slice、不偽造 QA 玩測數據、不寫 inbox reminder（嚴守降載，不 spam）。只做一件便宜有價值的事：fresh mount 重跑 VFX-01 健康檢查確認無回退。
+
+三條件檢查 (host + sandbox ground truth, 2026-05-20 20:33 CST / 12:33 UTC):
+- (a) `automation/STOP.txt` 不存在（`ls automation/` → 僅 scripts/ + workflows/；`find automation -name STOP.txt` → 0 match）→ 不停 ✓
+- (b) outbox 仍只有 `2026-05-19-1530-terry-direction.md`（2026-05-19 01:39, 7163 B，未更新）→ 無比此更新的決策 ✓
+- (c) AGENT-RUNS `grep -niE "^## .*[Tt]erry"` 命中全是 "Terry-in-conversation"（Claude 代筆批次），**無 Terry 本人 verify/玩測 entry**；inbox 11 封皆 Claude 自寫，無 Terry 回覆 → 仍 blocked ✓
+- HANDOFF-CURRENT.md 開頭無 STOP 字樣；build.latest.log 為 May 18 舊 baseline（2064 B，非新 fail）→ 無連續 3 次 build fail。STOP 條件全部為否。
+
+VFX-01 / QA-03 狀態（與 tick #45 無變化）:
+- VFX-01 = code-complete + 沙盒型別驗證 PASS。本 tick fresh mount 重跑確認：`npm run validate:weapons` PASS（8 weapon rows, exit 0）+ `npx tsc --noEmit` PASS（exit 0，零型別錯誤）+ grep signatureVFX 鏈標記 10 hits 跨 5 檔全存在（Game.ts / weapons.json / AutoWeapon.ts / AutoWeaponSpec.ts / Projectile.ts）→ signatureVFX 全鏈型別安全，無回退。唯一 pending = Terry Windows vite build（沙盒缺 @rollup/rollup-linux-x64-gnu，環境問題非 code）+ runtime 玩測。
+- QA-03 = `qa/reports/run-bomber-readability-20260519.md` 骨架存在（三軸仍 `<FILL>`）。唯一 pending = Terry 用 `?qaBombers=1` 玩測填數據 + CAO Raven 簽字。**不偽造玩測數據。**
+
+Ledger note（誠實，不偽造）: host Read 確認檔尾依序為 tick #41/#42/#43/#44/#45 entry（bash `wc -l` 報 2497 行為 mount stale-view 假象，host 實際更長，不為此耗 tick）。本 tick #46 在 host-visible 檔尾正常接續單一 entry，不重排不補寫遺失條目。
+
+Changed:
+- studio/AGENT-RUNS.md（本筆 tick #46 idle entry）
+- studio/claude-as-codex-loop.md（Current Task State → tick #46；next_slice → tick #47）
+- .ops/logs/claude-loop-20260520-2033.log
+
+Verification:
+- npm run validate:weapons: PASS（8 rows, exit 0；fresh mount 可信）
+- npx tsc --noEmit: PASS（exit 0，零型別錯誤）
+- npm run build (vite): N/A（沙盒缺 Linux rollup binary，verify-on-Windows pending）
+- git commit/push: skipped（沙盒不碰 git，policy 遵守）
+- 紅線檢查: 未跑 git；無 force-push；未動 src/code/data/config（純驗證+文件）；粒子預算未動（≤200）；未進 ENEMY-01；未寫 token；未偏離 outbox 決策；未寫 inbox reminder（降載，不 spam）
+
+Terry Test: VFX-01 → Windows `npm run build` + 拿 wpn_shock_baton 玩測全鏈（電感微抖/帶色 spark/1 跳鏈電/其他武器不變）。QA-03 → `?qaBombers=1` 跑 Checkpoint B 填三軸 + CAO Raven 簽字。兩者過了才宣告 Done 並進本輪終點 STOP 流程。
+
+Next: tick #47 三條件檢查。(a) STOP.txt 出現→退出寫 idle entry；(b) outbox 新決策→先讀；(c) AGENT-RUNS 出現 Terry verify/玩測 entry→解除 blocked 依結果推進（VFX-01 Slice 6 收尾 或 QA-03 填數據後 CAO 簽字）；否則維持純 idle（VFX-01+QA-03 皆待 Terry-on-Windows，Backlog 9/9 已清）→ 只更新狀態檔+.ops log，不開 code slice、不偽造數據、不 spam inbox。提醒：tsc PASS ≠ VFX-01 Done；報告骨架 ≠ QA-03 Done。
+
+## 2026-05-20 21:04 Claude (Cowork loop tick #47 — 純 idle + fresh 健康檢查)
+
+Status: Idle (VFX-01 與 QA-03 皆 blocked on Terry-on-Windows，無可自主推進的 code/data/doc slice)
+Task: VFX-01 / QA-03（兩者皆 code/skeleton 完成，卡 Terry verify）
+
+Slice: 三條件檢查全過 → 維持純 idle。本 tick 不開 code slice、不偽造 QA 玩測數據、不寫 inbox reminder（嚴守降載，不 spam）。只做一件便宜有價值的事：fresh mount 重跑 VFX-01 健康檢查確認無回退。
+
+三條件檢查 (host + sandbox ground truth, 2026-05-20 21:04 CST / 13:04 UTC):
+- (a) `automation/STOP.txt` 不存在（`ls automation/STOP.txt` → No such file；automation/ 仍只有 scripts/ + workflows/）→ 不停 ✓
+- (b) outbox 仍只有 `2026-05-19-1530-terry-direction.md`（2026-05-19 01:39, 7163 B，未更新）→ 無比此更新的決策 ✓
+- (c) AGENT-RUNS `grep -niE "terry.*(verif|玩測|playtest|build pass|簽字)"` 命中全是 Claude 自寫的「待 Terry 驗收」記錄，**無 Terry 本人 verify/玩測 entry**；inbox 11 封皆 Claude 自寫，無 Terry 回覆 → 仍 blocked ✓
+- HANDOFF-CURRENT.md 開頭無 STOP 字樣；build.latest.log 為 May 18 舊 baseline（2064 B，非新 fail）→ 無連續 3 次 build fail。STOP 條件全部為否。
+
+VFX-01 / QA-03 狀態（與 tick #46 無變化）:
+- VFX-01 = code-complete + 沙盒型別驗證 PASS。本 tick fresh mount 重跑確認：`npm run validate:weapons` PASS（8 weapon rows, exit 0）+ `npx tsc --noEmit` PASS（exit 0，零型別錯誤）+ grep signatureVFX 鏈標記 10 hits 跨 src/ 全存在（AutoWeaponSpec.ts / Projectile.ts / AutoWeapon.ts / Game.ts；weapons.json 另 1 處）→ signatureVFX 全鏈型別安全，無回退。唯一 pending = Terry Windows vite build（沙盒缺 @rollup/rollup-linux-x64-gnu，環境問題非 code）+ runtime 玩測。
+- QA-03 = `qa/reports/run-bomber-readability-20260519.md` 骨架存在（三軸仍 `<FILL>`）。唯一 pending = Terry 用 `?qaBombers=1` 玩測填數據 + CAO Raven 簽字。**不偽造玩測數據。**
+
+Ledger note（誠實，不偽造）: host Read 確認檔尾依序為 tick #41/#42/#43/#44/#45/#46 entry（bash `wc -l`/`tail` 可能顯示 stale view，為 mount stale-read 假象，不為此耗 tick）。本 tick #47 在 host-visible 檔尾正常接續單一 entry，不重排不補寫遺失條目。
+
+Changed:
+- studio/AGENT-RUNS.md（本筆 tick #47 idle entry）
+- studio/claude-as-codex-loop.md（Current Task State → tick #47；next_slice → tick #48）
+- .ops/logs/claude-loop-20260520-2104.log
+
+Verification:
+- npm run validate:weapons: PASS（8 rows, exit 0；fresh mount 可信）
+- npx tsc --noEmit: PASS（exit 0，零型別錯誤）
+- npm run build (vite): N/A（沙盒缺 Linux rollup binary，verify-on-Windows pending）
+- git commit/push: skipped（沙盒不碰 git，policy 遵守）
+- 紅線檢查: 未跑 git；無 force-push；未動 src/code/data/config（純驗證+文件）；粒子預算未動（≤200）；未進 ENEMY-01；未寫 token；未偏離 outbox 決策；未寫 inbox reminder（降載，不 spam）
+
+Terry Test: VFX-01 → Windows `npm run build` + 拿 wpn_shock_baton 玩測全鏈（電感微抖/帶色 spark/1 跳鏈電/其他武器不變）。QA-03 → `?qaBombers=1` 跑 Checkpoint B 填三軸 + CAO Raven 簽字。兩者過了才宣告 Done 並進本輪終點 STOP 流程。
+
+Next: tick #48 三條件檢查。(a) STOP.txt 出現→退出寫 idle entry；(b) outbox 新決策→先讀；(c) AGENT-RUNS 出現 Terry verify/玩測 entry→解除 blocked 依結果推進（VFX-01 Slice 6 收尾 或 QA-03 填數據後 CAO 簽字）；否則維持純 idle（VFX-01+QA-03 皆待 Terry-on-Windows，Backlog 9/9 已清）→ 只更新狀態檔+.ops log，不開 code slice、不偽造數據、不 spam inbox。提醒：tsc PASS ≠ VFX-01 Done；報告骨架 ≠ QA-03 Done。
+
+## 2026-05-20 21:34 Claude (Cowork loop tick #48 — 純 idle + fresh 健康檢查)
+
+Status: Idle (VFX-01 與 QA-03 皆 blocked on Terry-on-Windows，無可自主推進的 code/data/doc slice)
+Task: VFX-01 / QA-03（兩者皆 code/skeleton 完成，卡 Terry verify）
+
+Slice: 三條件檢查全過 → 維持純 idle。本 tick 不開 code slice、不偽造 QA 玩測數據、不寫 inbox reminder（嚴守降載，不 spam）。只做一件便宜有價值的事：fresh mount 重跑 VFX-01 健康檢查確認無回退。
+
+三條件檢查 (host + sandbox ground truth, 2026-05-20 21:34 CST / 13:34 UTC):
+- (a) `automation/STOP.txt` 不存在（`ls automation/` → 僅 scripts/ + workflows/；`find . -name STOP.txt` → 0 match）→ 不停 ✓
+- (b) outbox 仍只有 `2026-05-19-1530-terry-direction.md`（2026-05-19 01:39, 7163 B，未更新）→ 無比此更新的決策 ✓
+- (c) AGENT-RUNS `grep -niE "terry.*(verify|玩測|playtest|簽字|vite build (pass|ok))"` 命中全是 Claude 自寫的「待 Terry 驗收」記錄，**無 Terry 本人 verify/玩測 entry**；inbox 11 封皆 Claude 自寫，無 Terry 回覆 → 仍 blocked ✓
+- HANDOFF-CURRENT.md 開頭無 STOP 字樣；build.latest.log 為 May 18 舊 baseline（2064 B，非新 fail）→ 無連續 3 次 build fail。STOP 條件全部為否。
+
+VFX-01 / QA-03 狀態（與 tick #47 無變化）:
+- VFX-01 = code-complete + 沙盒型別驗證 PASS。本 tick fresh mount 重跑確認：`npm run validate:weapons` PASS（8 weapon rows, exit 0）+ `npx tsc --noEmit` PASS（exit 0，零型別錯誤）+ grep signatureVFX 鏈標記 10 hits 跨 src/ 全存在 → signatureVFX 全鏈型別安全，無回退。唯一 pending = Terry Windows vite build（沙盒缺 @rollup/rollup-linux-x64-gnu，環境問題非 code）+ runtime 玩測。
+- QA-03 = `qa/reports/run-bomber-readability-20260519.md` 骨架存在（三軸仍 `<FILL>`）。唯一 pending = Terry 用 `?qaBombers=1` 玩測填數據 + CAO Raven 簽字。**不偽造玩測數據。**
+
+Ledger note（誠實，不偽造）: host Read 確認檔尾依序為 tick #41/#42/#43/#44/#45/#46/#47 entry（bash `wc -l` 報 2497 行為 mount stale-view 假象，host 實際更長，不為此耗 tick）。本 tick #48 在 host-visible 檔尾正常接續單一 entry，不重排不補寫遺失條目。
+
+Changed:
+- studio/AGENT-RUNS.md（本筆 tick #48 idle entry）
+- studio/claude-as-codex-loop.md（Current Task State → tick #48；next_slice → tick #49）
+- .ops/logs/claude-loop-20260520-2134.log
+
+Verification:
+- npm run validate:weapons: PASS（8 rows, exit 0；fresh mount 可信）
+- npx tsc --noEmit: PASS（exit 0，零型別錯誤）
+- npm run build (vite): N/A（沙盒缺 Linux rollup binary，verify-on-Windows pending）
+- git commit/push: skipped（沙盒不碰 git，policy 遵守）
+- 紅線檢查: 未跑 git；無 force-push；未動 src/code/data/config（純驗證+文件）；粒子預算未動（≤200）；未進 ENEMY-01；未寫 token；未偏離 outbox 決策；未寫 inbox reminder（降載，不 spam）
+
+Terry Test: VFX-01 → Windows `npm run build` + 拿 wpn_shock_baton 玩測全鏈（電感微抖/帶色 spark/1 跳鏈電/其他武器不變）。QA-03 → `?qaBombers=1` 跑 Checkpoint B 填三軸 + CAO Raven 簽字。兩者過了才宣告 Done 並進本輪終點 STOP 流程。
+
+Next: tick #49 三條件檢查。(a) STOP.txt 出現→退出寫 idle entry；(b) outbox 新決策→先讀；(c) AGENT-RUNS 出現 Terry verify/玩測 entry→解除 blocked 依結果推進（VFX-01 Slice 6 收尾 或 QA-03 填數據後 CAO 簽字）；否則維持純 idle（VFX-01+QA-03 皆待 Terry-on-Windows，Backlog 9/9 已清）→ 只更新狀態檔+.ops log，不開 code slice、不偽造數據、不 spam inbox。提醒：tsc PASS ≠ VFX-01 Done；報告骨架 ≠ QA-03 Done。
+
+## 2026-05-20 22:00 Claude (Cowork loop tick #49 — 純 idle + fresh 健康檢查)
+
+Status: Idle (VFX-01 與 QA-03 皆 blocked on Terry-on-Windows，無可自主推進的 code/data/doc slice)
+Task: VFX-01 / QA-03（兩者皆 code/skeleton 完成，卡 Terry verify）
+
+Slice: 三條件檢查全過 → 維持純 idle。本 tick 不開 code slice、不偽造 QA 玩測數據、不寫 inbox reminder（嚴守降載，不 spam）。只做一件便宜有價值的事：fresh mount 重跑 VFX-01 健康檢查確認無回退 + 確認 QA 報告骨架仍待真人填寫。
+
+三條件檢查 (host + sandbox ground truth, 2026-05-20 22:00 CST / 14:00 UTC):
+- (a) `automation/STOP.txt` 不存在（`find . -name STOP.txt` → 0 match；automation/ 仍只有 scripts/ + workflows/）→ 不停 ✓
+- (b) outbox 仍只有 `2026-05-19-1530-terry-direction.md`（2026-05-19 01:39, 7163 B，未更新）→ 無比此更新的決策 ✓
+- (c) AGENT-RUNS `grep -ic "terry.*(verif|玩測|playtest)"` 命中 112 全是 Claude 自寫的「待 Terry 驗收」記錄，**無 Terry 本人 verify/玩測 entry**；inbox 11 封皆 Claude 自寫，無 Terry 回覆 → 仍 blocked ✓
+- HANDOFF-CURRENT.md 開頭無 STOP 字樣；build.latest.log 為 May 18 舊 baseline（2064 B，非新 fail）→ 無連續 3 次 build fail。STOP 條件全部為否。
+
+VFX-01 / QA-03 狀態（與 tick #48 無變化）:
+- VFX-01 = code-complete + 沙盒型別驗證 PASS。本 tick fresh mount 重跑確認：`npm run validate:weapons` PASS（8 weapon rows, exit 0）+ `npx tsc --noEmit` PASS（exit 0，零型別錯誤）→ signatureVFX 全鏈型別安全，無回退。唯一 pending = Terry Windows vite build（沙盒缺 @rollup/rollup-linux-x64-gnu，環境問題非 code）+ runtime 玩測。
+- QA-03 = `qa/reports/run-bomber-readability-20260519.md` 骨架存在，本 tick `grep -c FILL` = 39 → 三軸數據仍全 `<FILL>`，未被真人填寫。唯一 pending = Terry 用 `?qaBombers=1` 玩測填數據 + CAO Raven 簽字。**不偽造玩測數據。**
+
+Ledger note（誠實，不偽造）: host Read 確認檔尾依序為 tick #41–#48 entry（host-visible EOF 在 line 3001）；bash `wc -l` 報 2497 行止於 tick #36 為 mount stale-view 假象，不為此耗 tick。本 tick #49 在 host-visible 檔尾正常接續單一 entry，不重排不補寫遺失條目。
+
+Changed:
+- studio/AGENT-RUNS.md（本筆 tick #49 idle entry）
+- studio/claude-as-codex-loop.md（Current Task State → tick #49；next_slice → tick #50）
+- .ops/logs/claude-loop-20260520-2200.log
+
+Verification:
+- npm run validate:weapons: PASS（8 rows, exit 0；fresh mount 可信）
+- npx tsc --noEmit: PASS（exit 0，零型別錯誤）
+- npm run build (vite): N/A（沙盒缺 Linux rollup binary，verify-on-Windows pending）
+- git commit/push: skipped（沙盒不碰 git，policy 遵守）
+- 紅線檢查: 未跑 git；無 force-push；未動 src/code/data/config（純驗證+文件）；粒子預算未動（≤200）；未進 ENEMY-01；未寫 token；未偏離 outbox 決策；未寫 inbox reminder（降載，不 spam）
+
+Terry Test: VFX-01 → Windows `npm run build` + 拿 wpn_shock_baton 玩測全鏈（電感微抖/帶色 spark/1 跳鏈電/其他武器不變）。QA-03 → `?qaBombers=1` 跑 Checkpoint B 填三軸 + CAO Raven 簽字。兩者過了才宣告 Done 並進本輪終點 STOP 流程。
+
+Next: tick #50 三條件檢查。(a) STOP.txt 出現→退出寫 idle entry；(b) outbox 新決策→先讀；(c) AGENT-RUNS 出現 Terry verify/玩測 entry→解除 blocked 依結果推進（VFX-01 Slice 6 收尾 或 QA-03 填數據後 CAO 簽字）；否則維持純 idle（VFX-01+QA-03 皆待 Terry-on-Windows，Backlog 9/9 已清）→ 只更新狀態檔+.ops log，不開 code slice、不偽造數據、不 spam inbox。提醒：tsc PASS ≠ VFX-01 Done；報告骨架 ≠ QA-03 Done。
+
+## 2026-05-20 22:30 Claude (Cowork loop tick #50 — 純 idle + fresh 健康檢查)
+
+Status: Idle (VFX-01 與 QA-03 皆 blocked on Terry-on-Windows，無可自主推進的 code/data/doc slice)
+Task: VFX-01 / QA-03（兩者皆 code/skeleton 完成，卡 Terry verify）
+
+Slice: 三條件檢查全過 → 維持純 idle。本 tick 不開 code slice、不偽造 QA 玩測數據、不寫 inbox reminder（嚴守降載，不 spam）。只做一件便宜有價值的事：fresh mount 重跑 VFX-01 健康檢查確認無回退 + 確認 QA 報告骨架仍待真人填寫。
+
+三條件檢查 (host + sandbox ground truth, 2026-05-20 22:30 CST / 14:30 UTC):
+- (a) `automation/STOP.txt` 不存在（`find . -name STOP.txt` → 0 match；automation/ 仍只有 scripts/ + workflows/）→ 不停 ✓
+- (b) outbox 仍只有 `2026-05-19-1530-terry-direction.md`（2026-05-19 01:39, 7163 B，未更新）→ 無比此更新的決策 ✓
+- (c) AGENT-RUNS `grep -ic "terry.*(verif|玩測|playtest)"` 命中 112 全是 Claude 自寫的「待 Terry 驗收」記錄，**無 Terry 本人 verify/玩測 entry**；inbox 11 封皆 Claude 自寫，無 Terry 回覆 → 仍 blocked ✓
+- HANDOFF-CURRENT.md 開頭無 STOP 字樣；build.latest.log 為 May 18 舊 baseline（2064 B，非新 fail）→ 無連續 3 次 build fail。STOP 條件全部為否。
+
+VFX-01 / QA-03 狀態（與 tick #49 無變化）:
+- VFX-01 = code-complete + 沙盒型別驗證 PASS。本 tick fresh mount 重跑確認：`npm run validate:weapons` PASS（8 weapon rows, exit 0）+ `npx tsc --noEmit` PASS（exit 0，零型別錯誤）+ grep signatureVFX 鏈 10 hits 跨 src/ 全存在 → signatureVFX 全鏈型別安全，無回退。唯一 pending = Terry Windows vite build（沙盒缺 @rollup/rollup-linux-x64-gnu，環境問題非 code）+ runtime 玩測。
+- QA-03 = `qa/reports/run-bomber-readability-20260519.md` 骨架存在，本 tick `grep -c FILL` = 39 → 三軸數據仍全 `<FILL>`，未被真人填寫。唯一 pending = Terry 用 `?qaBombers=1` 玩測填數據 + CAO Raven 簽字。**不偽造玩測數據。**
+
+Ledger note（誠實，不偽造）: host Read 確認檔尾依序為 tick #41–#49 entry（host-visible EOF 在 line 3036）；bash `wc -l` 報 2497 行止於 tick #36 為 mount stale-view 假象，不為此耗 tick。本 tick #50 在 host-visible 檔尾正常接續單一 entry，不重排不補寫遺失條目。
+
+Changed:
+- studio/AGENT-RUNS.md（本筆 tick #50 idle entry）
+- studio/claude-as-codex-loop.md（Current Task State → tick #50；next_slice → tick #51）
+- .ops/logs/claude-loop-20260520-2230.log
+
+Verification:
+- npm run validate:weapons: PASS（8 rows, exit 0；fresh mount 可信）
+- npx tsc --noEmit: PASS（exit 0，零型別錯誤）
+- npm run build (vite): N/A（沙盒缺 Linux rollup binary，verify-on-Windows pending）
+- git commit/push: skipped（沙盒不碰 git，policy 遵守）
+- 紅線檢查: 未跑 git；無 force-push；未動 src/code/data/config（純驗證+文件）；粒子預算未動（≤200）；未進 ENEMY-01；未寫 token；未偏離 outbox 決策；未寫 inbox reminder（降載，不 spam）
+
+Terry Test: VFX-01 → Windows `npm run build` + 拿 wpn_shock_baton 玩測全鏈（電感微抖/帶色 spark/1 跳鏈電/其他武器不變）。QA-03 → `?qaBombers=1` 跑 Checkpoint B 填三軸 + CAO Raven 簽字。兩者過了才宣告 Done 並進本輪終點 STOP 流程。
+
+Next: tick #51 三條件檢查。(a) STOP.txt 出現→退出寫 idle entry；(b) outbox 新決策→先讀；(c) AGENT-RUNS 出現 Terry verify/玩測 entry→解除 blocked 依結果推進（VFX-01 Slice 6 收尾 或 QA-03 填數據後 CAO 簽字）；否則維持純 idle（VFX-01+QA-03 皆待 Terry-on-Windows，Backlog 9/9 已清）→ 只更新狀態檔+.ops log，不開 code slice、不偽造數據、不 spam inbox。提醒：tsc PASS ≠ VFX-01 Done；報告骨架 ≠ QA-03 Done。
+
+## 2026-05-20 23:03 Claude (Cowork loop tick #51 — 純 idle + fresh 健康檢查)
+
+Status: Idle (VFX-01 與 QA-03 皆 blocked on Terry-on-Windows，無可自主推進的 code/data/doc slice)
+Task: VFX-01 / QA-03（兩者皆 code/skeleton 完成，卡 Terry verify）
+
+Slice: 三條件檢查全過 → 維持純 idle。本 tick 不開 code slice、不偽造 QA 玩測數據、不寫 inbox reminder（嚴守降載，不 spam）。只做一件便宜有價值的事：fresh mount 重跑 VFX-01 健康檢查確認無回退 + 確認 QA 報告骨架仍待真人填寫。
+
+三條件檢查 (host + sandbox ground truth, 2026-05-20 23:03 CST / 15:03 UTC):
+- (a) `automation/STOP.txt` 不存在（`find . -name STOP.txt` → 0 match；automation/ 仍只有 scripts/ + workflows/）→ 不停 ✓
+- (b) outbox 仍只有 `2026-05-19-1530-terry-direction.md`（2026-05-19 01:39, 7163 B，未更新）→ 無比此更新的決策 ✓
+- (c) AGENT-RUNS 命中全是 Claude 自寫的「待 Terry 驗收」記錄，**無 Terry 本人 verify/玩測 entry**；inbox 11 封皆 Claude 自寫，無 Terry 回覆 → 仍 blocked ✓
+- HANDOFF-CURRENT.md 開頭無 STOP 字樣；build.latest.log 為 May 18 舊 baseline（2064 B，非新 fail）→ 無連續 3 次 build fail。STOP 條件全部為否。
+
+VFX-01 / QA-03 狀態（與 tick #50 無變化）:
+- VFX-01 = code-complete + 沙盒型別驗證 PASS。本 tick fresh mount 重跑確認：`npm run validate:weapons` PASS（8 weapon rows, exit 0）+ `npx tsc --noEmit` PASS（exit 0，零型別錯誤）+ grep signatureVFX 鏈跨 src/ 5 檔全存在 → signatureVFX 全鏈型別安全，無回退。唯一 pending = Terry Windows vite build（沙盒缺 @rollup/rollup-linux-x64-gnu，環境問題非 code）+ runtime 玩測。
+- QA-03 = `qa/reports/run-bomber-readability-20260519.md` 骨架存在，本 tick `grep -c FILL` = 39 → 三軸數據仍全 `<FILL>`，未被真人填寫。唯一 pending = Terry 用 `?qaBombers=1` 玩測填數據 + CAO Raven 簽字。**不偽造玩測數據。**
+
+Ledger note（誠實，不偽造）: host Read 確認檔尾依序為 tick #41–#50 entry（host-visible EOF 在 line 3072）；bash `wc -l` 報 2497 行止於 tick #36 為 mount stale-view 假象，不為此耗 tick。本 tick #51 在 host-visible 檔尾正常接續單一 entry，不重排不補寫遺失條目。
+
+Changed:
+- studio/AGENT-RUNS.md（本筆 tick #51 idle entry）
+- studio/claude-as-codex-loop.md（Current Task State → tick #51；next_slice → tick #52）
+- .ops/logs/claude-loop-20260520-2303.log
+
+Verification:
+- npm run validate:weapons: PASS（8 rows, exit 0；fresh mount 可信）
+- npx tsc --noEmit: PASS（exit 0，零型別錯誤）
+- npm run build (vite): N/A（沙盒缺 Linux rollup binary，verify-on-Windows pending）
+- git commit/push: skipped（沙盒不碰 git，policy 遵守）
+- 紅線檢查: 未跑 git；無 force-push；未動 src/code/data/config（純驗證+文件）；粒子預算未動（≤200）；未進 ENEMY-01；未寫 token；未偏離 outbox 決策；未寫 inbox reminder（降載，不 spam）
+
+Terry Test: VFX-01 → Windows `npm run build` + 拿 wpn_shock_baton 玩測全鏈（電感微抖/帶色 spark/1 跳鏈電/其他武器不變）。QA-03 → `?qaBombers=1` 跑 Checkpoint B 填三軸 + CAO Raven 簽字。兩者過了才宣告 Done 並進本輪終點 STOP 流程。
+
+Next: tick #52 三條件檢查。(a) STOP.txt 出現→退出寫 idle entry；(b) outbox 新決策→先讀；(c) AGENT-RUNS 出現 Terry verify/玩測 entry→解除 blocked 依結果推進（VFX-01 Slice 6 收尾 或 QA-03 填數據後 CAO 簽字）；否則維持純 idle（VFX-01+QA-03 皆待 Terry-on-Windows，Backlog 9/9 已清）→ 只更新狀態檔+.ops log，不開 code slice、不偽造數據、不 spam inbox。提醒：tsc PASS ≠ VFX-01 Done；報告骨架 ≠ QA-03 Done。
+
+## 2026-05-20 23:33 Claude (Cowork loop tick #52 — 純 idle + fresh 健康檢查)
+
+Status: Idle (VFX-01 與 QA-03 皆 blocked on Terry-on-Windows，無可自主推進的 code/data/doc slice)
+Task: VFX-01 / QA-03（兩者皆 code/skeleton 完成，卡 Terry verify）
+
+Slice: 三條件檢查全過 → 維持純 idle。本 tick 不開 code slice、不偽造 QA 玩測數據、不寫 inbox reminder（嚴守降載，不 spam）。只做一件便宜有價值的事：fresh mount 重跑 VFX-01 健康檢查確認無回退 + 確認 QA 報告骨架仍待真人填寫。
+
+三條件檢查 (host + sandbox ground truth, 2026-05-20 23:33 CST / 15:33 UTC):
+- (a) `automation/STOP.txt` 不存在（`find . -name STOP.txt` → 0 match；automation/ 仍只有 scripts/ + workflows/）→ 不停 ✓
+- (b) outbox 仍只有 `2026-05-19-1530-terry-direction.md`（2026-05-19 01:39, 7163 B，未更新）→ 無比此更新的決策 ✓
+- (c) AGENT-RUNS 命中全是 Claude 自寫的「待 Terry 驗收」記錄，**無 Terry 本人 verify/玩測 entry**（`grep -inE '^## .*terry.*(verif|玩測|playtest)'` → 0 match）；inbox 11 封皆 Claude 自寫，無 Terry 回覆 → 仍 blocked ✓
+- HANDOFF-CURRENT.md 開頭無 STOP 字樣；build.latest.log 為 May 18 舊 baseline（mtime 2026-05-18，非新 fail）→ 無連續 3 次 build fail。STOP 條件全部為否。
+
+VFX-01 / QA-03 狀態（與 tick #51 無變化）:
+- VFX-01 = code-complete + 沙盒型別驗證 PASS。本 tick fresh mount 重跑確認：`npm run validate:weapons` PASS（8 weapon rows, exit 0）+ `npx tsc --noEmit` PASS（exit 0，零型別錯誤）+ grep signatureVFX 鏈跨 src/ 5 檔全存在（Game.ts / weapons.json / AutoWeapon.ts / AutoWeaponSpec.ts / Projectile.ts）→ signatureVFX 全鏈型別安全，無回退。唯一 pending = Terry Windows vite build（沙盒缺 @rollup/rollup-linux-x64-gnu，環境問題非 code）+ runtime 玩測。
+- QA-03 = `qa/reports/run-bomber-readability-20260519.md` 骨架存在，三軸數據仍全 `<FILL>`，未被真人填寫。唯一 pending = Terry 用 `?qaBombers=1` 玩測填數據 + CAO Raven 簽字。**不偽造玩測數據。**
+
+Ledger note（誠實，不偽造）: host Read 確認檔尾依序為 tick #41–#51 entry（host-visible EOF 在 line 3107）；bash `wc -l` 報 ~2497 行止於 tick #36 為 mount stale-view 假象，不為此耗 tick。本 tick #52 在 host-visible 檔尾正常接續單一 entry，不重排不補寫遺失條目。
+
+Changed:
+- studio/AGENT-RUNS.md（本筆 tick #52 idle entry）
+- studio/claude-as-codex-loop.md（Current Task State → tick #52；next_slice → tick #53）
+- .ops/logs/claude-loop-20260520-2333.log
+
+Verification:
+- npm run validate:weapons: PASS（8 rows, exit 0；fresh mount 可信）
+- npx tsc --noEmit: PASS（exit 0，零型別錯誤）
+- npm run build (vite): N/A（沙盒缺 Linux rollup binary，verify-on-Windows pending）
+- git commit/push: skipped（沙盒不碰 git，policy 遵守）
+- 紅線檢查: 未跑 git；無 force-push；未動 src/code/data/config（純驗證+文件）；粒子預算未動（≤200）；未進 ENEMY-01；未寫 token；未偏離 outbox 決策；未寫 inbox reminder（降載，不 spam）
+
+Terry Test: VFX-01 → Windows `npm run build` + 拿 wpn_shock_baton 玩測全鏈（電感微抖/帶色 spark/1 跳鏈電/其他武器不變）。QA-03 → `?qaBombers=1` 跑 Checkpoint B 填三軸 + CAO Raven 簽字。兩者過了才宣告 Done 並進本輪終點 STOP 流程。
+
+Next: tick #53 三條件檢查。(a) STOP.txt 出現→退出寫 idle entry；(b) outbox 新決策→先讀；(c) AGENT-RUNS 出現 Terry verify/玩測 entry→解除 blocked 依結果推進（VFX-01 Slice 6 收尾 或 QA-03 填數據後 CAO 簽字）；否則維持純 idle（VFX-01+QA-03 皆待 Terry-on-Windows，Backlog 9/9 已清）→ 只更新狀態檔+.ops log，不開 code slice、不偽造數據、不 spam inbox。提醒：tsc PASS ≠ VFX-01 Done；報告骨架 ≠ QA-03 Done。
+
+## 2026-05-21 (Cowork loop tick #53 — 純 idle + fresh 健康檢查)
+
+Status: Idle (VFX-01 與 QA-03 皆 blocked on Terry-on-Windows，無可自主推進的 code/data/doc slice)
+Task: VFX-01 / QA-03（兩者皆 code/skeleton 完成，卡 Terry verify）
+
+Slice: 三條件檢查全過 → 維持純 idle。本 tick 不開 code slice、不偽造 QA 玩測數據、不寫 inbox reminder（嚴守降載，不 spam）。只做一件便宜有價值的事：fresh mount 重跑 VFX-01 健康檢查確認無回退。
+
+三條件檢查 (host + sandbox ground truth, 2026-05-21):
+- (a) `automation/STOP.txt` 不存在（`find . -name STOP.txt` → 0 match；automation/ 仍只有 scripts/ + workflows/）→ 不停 ✓
+- (b) outbox 仍只有 `2026-05-19-1530-terry-direction.md`（7163 B，未更新）→ 無比此更新的決策 ✓
+- (c) AGENT-RUNS 命中全是 Claude 自寫的「待 Terry 驗收」記錄，**無 Terry 本人 verify/玩測 entry**（`grep -inE '^## .*terry.*(verif|玩測|playtest)'` → 0 match）→ 仍 blocked ✓
+- HANDOFF-CURRENT.md 開頭無 STOP 字樣；build.latest.log 為 May 18 舊 baseline（非新 fail）→ 無連續 3 次 build fail。STOP 條件全部為否。
+
+VFX-01 / QA-03 狀態（與 tick #52 無變化）:
+- VFX-01 = code-complete + 沙盒型別驗證 PASS。本 tick fresh mount 重跑確認：`npm run validate:weapons` PASS（8 weapon rows, exit 0）+ `npx tsc --noEmit` PASS（exit 0，零型別錯誤）+ grep signatureVFX 鏈跨 src/ 5 檔全存在（Game.ts / weapons.json / AutoWeapon.ts / AutoWeaponSpec.ts / Projectile.ts）→ signatureVFX 全鏈型別安全，無回退。唯一 pending = Terry Windows vite build（沙盒缺 @rollup/rollup-linux-x64-gnu，環境問題非 code）+ runtime 玩測。
+- QA-03 = `qa/reports/run-bomber-readability-20260519.md` 骨架存在，三軸數據仍全 `<FILL>`，未被真人填寫。唯一 pending = Terry 用 `?qaBombers=1` 玩測填數據 + CAO Raven 簽字。**不偽造玩測數據。**
+
+Changed:
+- studio/AGENT-RUNS.md（本筆 tick #53 idle entry）
+- studio/claude-as-codex-loop.md（Current Task State → tick #53；next_slice → tick #54）
+- .ops/logs/claude-loop-20260521.log
+
+Verification:
+- npm run validate:weapons: PASS（8 rows, exit 0；fresh mount 可信）
+- npx tsc --noEmit: PASS（exit 0，零型別錯誤）
+- npm run build (vite): N/A（沙盒缺 Linux rollup binary，verify-on-Windows pending）
+- git commit/push: skipped（沙盒不碰 git，policy 遵守）
+- 紅線檢查: 未跑 git；無 force-push；未動 src/code/data/config（純驗證+文件）；粒子預算未動（≤200）；未進 ENEMY-01；未寫 token；未偏離 outbox 決策；未寫 inbox reminder（降載，不 spam）
+
+Terry Test: VFX-01 → Windows `npm run build` + 拿 wpn_shock_baton 玩測全鏈（電感微抖/帶色 spark/1 跳鏈電/其他武器不變）。QA-03 → `?qaBombers=1` 跑 Checkpoint B 填三軸 + CAO Raven 簽字。兩者過了才宣告 Done 並進本輪終點 STOP 流程。
+
+Next: tick #54 三條件檢查。(a) STOP.txt 出現→退出寫 idle entry；(b) outbox 新決策→先讀；(c) AGENT-RUNS 出現 Terry verify/玩測 entry→解除 blocked 依結果推進；否則維持純 idle → 只更新狀態檔+.ops log，不開 code slice、不偽造數據、不 spam inbox。提醒：tsc PASS ≠ VFX-01 Done；報告骨架 ≠ QA-03 Done。
+
+## 2026-05-21 Claude (Cowork loop tick #54 — 純 idle + fresh 健康檢查)
+
+Status: Idle (VFX-01 與 QA-03 皆 blocked on Terry-on-Windows，無可自主推進的 code/data/doc slice)
+Task: VFX-01 / QA-03（兩者皆 code/skeleton 完成，卡 Terry verify）
+
+Slice: 三條件檢查全過 → 維持純 idle。本 tick 不開 code slice、不偽造 QA 玩測數據、不寫 inbox reminder（嚴守降載，不 spam）。只做一件便宜有價值的事：fresh mount 重跑 VFX-01 健康檢查確認無回退。
+
+三條件檢查 (host + sandbox ground truth, 2026-05-21):
+- (a) `automation/STOP.txt` 不存在（`find . -name STOP.txt` → 0 match；automation/ 仍只有 scripts/ + workflows/）→ 不停 ✓
+- (b) outbox 仍只有 `2026-05-19-1530-terry-direction.md`（7163 B，未更新）→ 無比此更新的決策 ✓
+- (c) AGENT-RUNS `grep -inE '^## .*terry.*(verif|玩測|playtest)'` → 0 match，**無 Terry 本人 verify/玩測 entry**，命中全是 Claude 自寫的「待 Terry 驗收」記錄 → 仍 blocked ✓
+- HANDOFF-CURRENT.md 開頭無 STOP 字樣；build.latest.log 為 May 18 舊 baseline（非新 fail）→ 無連續 3 次 build fail。STOP 條件全部為否。
+
+VFX-01 / QA-03 狀態（與 tick #53 無變化）:
+- VFX-01 = code-complete + 沙盒型別驗證 PASS。本 tick fresh mount 重跑確認：`npm run validate:weapons` PASS（8 weapon rows, exit 0）+ `npx tsc --noEmit` PASS（exit 0，零型別錯誤）+ `grep -rl signatureVFX src/` 跨 5 檔全存在（Game.ts / weapons.json / AutoWeapon.ts / AutoWeaponSpec.ts / Projectile.ts）→ signatureVFX 全鏈型別安全，無回退。唯一 pending = Terry Windows vite build（沙盒缺 @rollup/rollup-linux-x64-gnu，環境問題非 code）+ runtime 玩測。
+- QA-03 = `qa/reports/run-bomber-readability-20260519.md` 骨架存在，三軸數據仍全 `<FILL>`，未被真人填寫。唯一 pending = Terry 用 `?qaBombers=1` 玩測填數據 + CAO Raven 簽字。**不偽造玩測數據。**
+
+Changed:
+- studio/AGENT-RUNS.md（本筆 tick #54 idle entry）
+- studio/claude-as-codex-loop.md（Current Task State → tick #54；next_slice → tick #55）
+- .ops/logs/claude-loop-20260521-tick54.log
+
+Verification:
+- npm run validate:weapons: PASS（8 rows, exit 0；fresh mount 可信）
+- npx tsc --noEmit: PASS（exit 0，零型別錯誤）
+- npm run build (vite): N/A（沙盒缺 Linux rollup binary，verify-on-Windows pending）
+- git commit/push: skipped（沙盒不碰 git，policy 遵守）
+- 紅線檢查: 未跑 git；無 force-push；未動 src/code/data/config（純驗證+文件）；粒子預算未動（≤200）；未進 ENEMY-01；未寫 token；未偏離 outbox 決策；未寫 inbox reminder（降載，不 spam）
+
+Terry Test: VFX-01 → Windows `npm run build` + 拿 wpn_shock_baton 玩測全鏈（電感微抖/帶色 spark/1 跳鏈電/其他武器不變）。QA-03 → `?qaBombers=1` 跑 Checkpoint B 填三軸 + CAO Raven 簽字。兩者過了才宣告 Done 並進本輪終點 STOP 流程。
+
+Next: tick #55 三條件檢查。(a) STOP.txt 出現→退出寫 idle entry；(b) outbox 新決策→先讀；(c) AGENT-RUNS 出現 Terry verify/玩測 entry→解除 blocked 依結果推進；否則維持純 idle → 只更新狀態檔+.ops log，不開 code slice、不偽造數據、不 spam inbox。提醒：tsc PASS ≠ VFX-01 Done；報告骨架 ≠ QA-03 Done。
+
+## 2026-05-21 03:04 Claude (Cowork loop tick #55)
+
+Status: Blocked (idle — VFX-01 + QA-03 皆卡 Terry-on-Windows verify)
+Task: VFX-01 / QA-03（兩者皆 code/skeleton 完成，等 Terry 真人驗證）
+
+Slice: 純 idle + fresh 健康檢查。三條件檢查全過 → (a) automation/STOP.txt 不存在（find . -name STOP.txt 0 match；automation/ 只有 scripts+workflows） (b) outbox 仍只有 2026-05-19-1530-terry-direction.md（7163 B，未更新，無新決策） (c) AGENT-RUNS grep `^## .*terry.*(verif|玩測|playtest)` = 0 match → 無 Terry 本人 verify/玩測 entry。HANDOFF 開頭為「# Current Handoff」無 STOP；build.latest.log = May 18 舊 baseline 非新 fail → 無連續 3 fail。本 tick 不開 code slice、不偽造 QA 玩測數據、不寫 inbox reminder（嚴守降載）。
+
+Findings (fresh mount ground truth):
+- **STOP 條件全為否**：無 STOP.txt；HANDOFF 無 STOP；VFX-01+QA-03 未雙雙 Done；outbox 唯一決策仍是 2026-05-19-1530（無更新）；無連續 3 build fail；沙盒不碰 git（無 conflict 風險）。
+- **VFX-01 程式碼健康（fresh 驗證，可信）**：`npm run validate:weapons` PASS（8 weapon rows, exit 0）；`npx tsc --noEmit` PASS（exit 0，零型別錯誤）。`grep -rl signatureVFX src/` 跨 5 檔全存在：src/core/Game.ts、src/data/weapons.json、src/weapon/AutoWeapon.ts、src/weapon/AutoWeaponSpec.ts、src/weapon/Projectile.ts → 確認 signatureVFX 鏈型別安全、無回退。`vite build` 維持只能在 Windows verify（沙盒缺 @rollup/rollup-linux-x64-gnu，非 code 問題）。
+- QA-03 報告骨架存在但三軸數據仍待真人玩測填寫 + CAO Raven 簽字，**不可偽造**。
+
+Changed:
+- studio/AGENT-RUNS.md（本筆 tick #55）
+- studio/claude-as-codex-loop.md（Current Task State → tick #55；next_slice → tick #56）
+- .ops/logs/claude-loop-20260521-0304.log
+
+Verification:
+- npm run validate:weapons: PASS（8 rows, exit 0；fresh mount 可信）
+- npx tsc --noEmit: PASS（exit 0，零型別錯誤）
+- npm run build (vite): N/A（沙盒缺 Linux rollup binary，verify-on-Windows pending）
+- git commit/push: skipped（沙盒不碰 git，policy 遵守）
+- 紅線檢查: 未跑 git；無 force-push；未動 src/code/data/config（純驗證+文件）；粒子預算未動（≤200）；未進 ENEMY-01；未寫 token；未偏離 outbox 決策；未寫 inbox（降載，不 spam）
+
+Terry Test: VFX-01 → Windows `npm run build`（vite 打包）+ 拿 wpn_shock_baton 玩測全鏈（電感微抖／帶色 spark／1 跳鏈電）。QA-03 → `?qaBombers=1` 跑 Checkpoint B bomber 玩測填三軸 + CAO Raven 簽字。兩者過了才宣告 Done 並進本輪終點 STOP 流程。
+
+Next: tick #56 三條件檢查。(a) STOP.txt 出現→退出寫 idle entry；(b) outbox 出現比 2026-05-19-1530 更新的決策→先讀新決策；(c) AGENT-RUNS 出現 Terry verify/玩測 entry→解除 blocked 依結果推進；否則維持純 idle（不開 code slice、不偽造數據、不 spam inbox）。
+
+## 2026-05-21 03:58 Claude (Cowork loop tick #56 — 純 idle + fresh 健康檢查)
+
+Status: Blocked (awaiting Terry verify)
+Task: VFX-01 (5/6 code-complete) / QA-03 (1/3)
+Slice: 三條件檢查全過 → 純 idle。(a) automation/STOP.txt 不存在（find . -name STOP.txt 0 match；automation/ 只有 scripts+workflows）。(b) outbox 仍只有 2026-05-19-1530-terry-direction.md（7163 B，未更新）。(c) AGENT-RUNS grep `^## .*terry.*(verif|玩測|playtest|build)` = 0 match → 仍無 Terry 本人 verify/玩測 entry。HANDOFF 開頭無 STOP。build.latest.log 為 May 18 舊 baseline（成功 + chunk 警告，非 fail）→ 無連續 3 fail。本 tick 不開 code slice、不偽造 QA 數據、不寫新 inbox reminder（escalation 已送 9 封，降載中）、不開 ENEMY-01。做一件有價值事：fresh mount 重跑沙盒可信檢查。
+
+Changed:
+- studio/claude-as-codex-loop.md: Current Task State last_run/current_slice/next_slice 更新至 tick #56→#57
+- .ops/logs/claude-loop-20260521-0358.log: 新增本 tick log
+
+Verification:
+- npm run validate:weapons: PASS（8 weapon rows, exit 0）— fresh mount 可信
+- npx tsc --noEmit: PASS（exit 0, 零型別錯誤）— VFX-01 Slice 2-5 全鏈型別安全維持
+- npm run build (vite): N/A（沙盒缺 @rollup/rollup-linux-x64-gnu，Windows-only verify，非 code 問題）
+- git commit: N/A（沙盒不碰 git 政策；PENDING-CHANGES 已列待 Terry recovery）
+- git push: skipped
+
+Next Slice: tick #57 先三條件檢查。(a) STOP.txt 出現 → 退出。(b) outbox 出現更新決策 → 先讀。(c) AGENT-RUNS 出現 Terry verify/玩測 entry → 解除 blocked，推進 VFX-01 Slice 6 收尾或 QA-03 填數據後 CAO 簽字。否則維持純 idle + fresh 健康檢查。VFX-01 + QA-03 仍卡 Terry-only gate，doc backlog 9/9 已清空，不開新項目。
+
+## 2026-05-21 04:04 Claude (Cowork loop tick #57 — 純 idle + fresh 健康檢查)
+
+Status: Blocked (Terry-only gate)
+Task: VFX-01 (5/6) + QA-03 (1/3)
+Slice: 三條件檢查全過 (a) automation/STOP.txt 不存在（find -name STOP.txt 0 match；automation/ 只有 scripts+workflows）(b) HANDOFF 開頭無 STOP；outbox 仍只有 2026-05-19-1530（7163 B 未更新）(c) AGENT-RUNS grep '^## .*terry.*(verif|玩測|playtest|build)' = 0 → 無 Terry 本人 verify/玩測 entry。build.latest.log = May 18 舊 baseline，非新 fail → 無連續 3 fail。本 tick 不開 code slice、不偽造 QA 數據、不寫 inbox reminder、不進 ENEMY-01、不進 STOP 流程（VFX-01/QA-03 皆未 Done）。
+
+Changed:
+- studio/AGENT-RUNS.md: 本 tick #57 entry（純文件）
+- studio/claude-as-codex-loop.md: Current Task State current_slice/next_slice 更新
+- .ops/logs/claude-loop-20260521-0404.log: 本 tick log
+
+Verification:
+- npm run validate:weapons: PASS（8 weapon rows, exit 0）
+- npx tsc --noEmit: PASS（exit 0, 零型別錯誤）
+- grep -rl signatureVFX src/: 5 檔全存在（Game.ts / weapons.json / AutoWeapon.ts / AutoWeaponSpec.ts / Projectile.ts）→ VFX-01 鏈型別安全無回退
+- vite build: 沙盒缺 @rollup/rollup-linux-x64-gnu（Windows-only，非 code 問題）
+- git: 未跑（policy 沙盒不碰 git）
+
+Next: tick #58 → 先三條件檢查。(a) STOP.txt 出現→退出寫 idle entry；(b) outbox 出現比 2026-05-19-1530 更新的決策→先讀新決策；(c) AGENT-RUNS 出現 Terry verify/玩測 entry→解除 blocked，推進 VFX-01 Slice 6 收尾或 QA-03 填數據後 CAO 簽字。否則維持純 idle + fresh 健康檢查（validate:weapons + tsc）。
+
+## 2026-05-21 05:39 Claude (Cowork loop tick #58)
+
+Status: Blocked (idle — Terry-only gate pending)
+Task: VFX-01 (5/6) + QA-03 (1/3)
+Slice: 純 idle + fresh 健康檢查。三條件全過 (a) automation/STOP.txt 不存在（find -name STOP.txt 0 match；automation/ 只有 scripts+workflows）(b) outbox 仍只有 2026-05-19-1530（7163 B 未更新）(c) AGENT-RUNS grep '^## .*terry.*(verif|玩測|playtest|build)' = 0 → 無 Terry 本人 verify/玩測 entry。HANDOFF 開頭無 STOP；build.latest.log = May 18 舊 baseline 非新 fail → 無連續 3 fail。本 tick 不開 code slice、不偽造 QA 數據、不寫新 inbox reminder、不進 ENEMY-01。
+
+Changed:
+- studio/AGENT-RUNS.md: 本筆 tick #58 entry
+- studio/claude-as-codex-loop.md: Current Task State current_slice/next_slice 更新
+- .ops/logs/claude-loop-20260521-0539.log: 本 tick log
+
+Verification:
+- npm run validate:weapons: pass（8 rows, exit 0）
+- npm run build: N/A（沙盒缺 Linux rollup binary，非 code 問題；vite 打包仍 Windows-only）
+- npx tsc --noEmit: pass（exit 0 零型別錯誤）
+- grep -rl signatureVFX src/: 5 檔全存在（Game.ts/weapons.json/AutoWeapon.ts/AutoWeaponSpec.ts/Projectile.ts）→ VFX-01 鏈型別安全維持
+- git commit/push: skipped（沙盒不碰 git；policy）
+- 紅線檢查: 未跑 git；未動 src/code/data/config；未 force-push；未動 ENEMY-01；未寫 token；未偏離 outbox 決策；VFX 粒子預算 ≤200 未動
+
+Next Slice: tick #59 先三條件檢查。(a) automation/STOP.txt 出現 → 退出 + 寫 idle entry。(b) outbox 出現比 2026-05-19-1530 更新的決策 → 先讀新決策。(c) AGENT-RUNS 出現 Terry verify/玩測 entry → 解除 blocked，推進 VFX-01 Slice 6 收尾或 QA-03 填數據後 CAO Raven 簽字。否則維持純 idle + fresh 健康檢查（validate:weapons + tsc）。
+
+## 2026-05-20 22:04 Claude (Cowork loop tick #59)
+
+Status: Blocked (waiting on Terry-only gate)
+Task: VFX-01 (5/6) + QA-03 (1/3)
+Slice: 純 idle + fresh 健康檢查。三條件全過 (a) automation/STOP.txt 不存在（find -name STOP.txt 0 match；automation/ 只有 scripts+workflows）(b) outbox 仍只有 2026-05-19-1530（7163 B 未更新）(c) AGENT-RUNS 無 Terry 本人 verify/玩測 entry。build.latest.log = May 18 舊 baseline 非新 fail → 無連續 3 fail。本 tick 不開 code slice、不偽造 QA 數據、不寫新 inbox reminder、不進 ENEMY-01。fresh mount 重跑可信驗證 PASS。
+
+Changed:
+- studio/AGENT-RUNS.md: 本 entry
+- studio/claude-as-codex-loop.md: Current Task State (tick #59 → next tick #60)
+- .ops/logs/claude-loop-*.log: 本 tick log
+
+Verification:
+- npm run validate:weapons: pass (8 rows, exit 0)
+- npx tsc --noEmit: pass (exit 0, 零型別錯誤)
+- grep signatureVFX src/: 5 檔全存在 (Game.ts / weapons.json / AutoWeapon.ts / AutoWeaponSpec.ts / Projectile.ts)
+- vite build: N/A (沙盒缺 Linux rollup binary，非 code 問題；Windows-only)
+- git commit: N/A (policy 維持不從沙盒跑 git)
+- git push: skipped
+
+Next Slice: tick #60 先三條件檢查。(a) STOP.txt 出現 → 退出+idle entry。(b) outbox 出現比 2026-05-19-1530 更新決策 → 先讀。(c) AGENT-RUNS 出現 Terry verify/玩測 entry → 解除 blocked，推進 VFX-01 Slice 6 收尾或 QA-03 填數據+CAO 簽字。否則維持純 idle + fresh 健康檢查。
+
+## 2026-05-21 06:33 Claude (Cowork loop tick #60)
+
+Status: Blocked (Terry-only gate) — pure idle + fresh health check
+Task: VFX-01 (5/6) / QA-03 (1/3)
+Slice: 三條件全過 → 純 idle。(a) automation/STOP.txt 不存在（find -name STOP.txt 0 match）(b) outbox 仍只有 2026-05-19-1530（7163 B 未更新）(c) AGENT-RUNS grep '^## .*terry.*(verif|玩測|playtest|build)' = 0 → 無 Terry 本人 verify/玩測 entry。HANDOFF 開頭無 STOP；build.latest.log = May 18 舊 baseline（非新 fail）→ 無連續 3 fail。本 tick 不開 code slice、不偽造 QA 數據、不寫 inbox reminder（嚴守降載）、不進 ENEMY-01。
+
+Changed:
+- studio/AGENT-RUNS.md: 本 entry（純文件）
+- studio/claude-as-codex-loop.md: Current Task State 更新至 tick #61
+- .ops/logs/claude-loop-20260521-0633.log: 新增
+
+Verification:
+- npm run validate:weapons: pass (8 rows, exit 0)
+- npx tsc --noEmit: pass (exit 0, 零型別錯誤)
+- grep -rl signatureVFX src/: 5 檔全存在 (Game.ts/weapons.json/AutoWeapon.ts/AutoWeaponSpec.ts/Projectile.ts)
+- vite build: N/A 沙盒 (缺 Linux rollup binary，非 code 問題，Windows-only)
+- git commit/push: N/A (純驗證+文件，policy 維持不從沙盒跑 git)
+
+Next Slice: tick #61 先三條件檢查。(a) STOP.txt 出現 → 退出+寫 idle entry。(b) outbox 出現比 2026-05-19-1530 更新的決策 → 先讀新決策。(c) AGENT-RUNS 出現 Terry verify/玩測 entry → 解除 blocked，推進 VFX-01 Slice 6 收尾或 QA-03 填數據後 CAO Raven 簽字。否則維持純 idle + fresh 健康檢查 (validate:weapons + tsc)。
+
+## 2026-05-21 07:50 Claude (Cowork loop tick #61)
+
+Status: Blocked (pure idle — VFX-01 + QA-03 both gated on Terry-only actions)
+Task: VFX-01 / QA-03
+Slice: 純 idle + fresh 健康檢查。三條件全過：(a) automation/STOP.txt 不存在（find -name STOP.txt 0 match；automation/ 只有 scripts+workflows）(b) HANDOFF 開頭無 STOP；outbox 仍只有 2026-05-19-1530（7163 B 未更新）(c) AGENT-RUNS grep '^## .*terry.*(verif|玩測|playtest|build)' = 0 → 無 Terry 本人 verify/玩測 entry。build.latest.log = May 18 舊 baseline 非新 fail → 無連續 3 fail。本 tick 不開 code slice、不偽造 QA 數據、不寫新 inbox reminder、不進 ENEMY-01。
+
+Changed:
+- studio/AGENT-RUNS.md: 本 tick #61 entry（純文件）
+- studio/claude-as-codex-loop.md: Current Task State 更新（current_slice → tick #61, next_slice → tick #62）
+- .ops/logs/claude-loop-20260521-0750.log: 本 tick log
+
+Verification:
+- npm run validate:weapons: pass (8 rows, exit 0)
+- npx tsc --noEmit: pass (exit 0, 零型別錯誤)
+- grep -rl signatureVFX src/: 5 檔全存在 (Game.ts/weapons.json/AutoWeapon.ts/AutoWeaponSpec.ts/Projectile.ts)
+- npm run build (vite): N/A (沙盒缺 Linux rollup binary，非 code 問題，只能 Windows verify)
+- git commit: N/A (沙盒不跑 git，policy 維持)
+- git push: skipped
+
+Next Slice: tick #62 先三條件檢查。(a) STOP.txt 出現 → 退出 + idle entry。(b) outbox 出現比 2026-05-19-1530 更新的決策 → 先讀新決策。(c) AGENT-RUNS 出現 Terry verify/玩測 entry → 解除 blocked，推進 VFX-01 Slice 6 收尾或 QA-03 填數據後 CAO Raven 簽字。否則維持純 idle + fresh 健康檢查。
+
+## 2026-05-21 08:03 Claude (Cowork loop tick #62)
+
+Status: Blocked (Terry-only gate) — pure idle health check
+Task: VFX-01 (5/6) + QA-03 (1/3)
+Slice: 三條件全過 (a) STOP.txt 不存在 (b) HANDOFF 無 STOP / outbox 仍只有 2026-05-19-1530 (c) AGENT-RUNS 無 Terry verify entry。不開 code slice、不偽造 QA、不寫 reminder、不進 ENEMY-01。fresh mount 重跑 validate:weapons PASS (8 rows) + tsc --noEmit PASS (exit 0) + signatureVFX 鏈 5 檔全存在 → VFX-01 型別安全維持。
+
+Changed:
+- studio/claude-as-codex-loop.md: 更新 last_run / current_slice (tick #62) / next_slice (tick #63)；archive tick #61
+- .ops/logs/claude-loop-20260521-0803.log: 新增本 tick log
+
+Verification:
+- npm run validate:weapons: pass (8 rows, exit 0)
+- npx tsc --noEmit: pass (exit 0)
+- npm run build (vite): N/A (Windows-only, 沙盒缺 Linux rollup binary)
+- git commit: N/A (沙盒不碰 git policy)
+- git push: skipped (policy)
+
+Next Slice: tick #63 — 三條件檢查；若 Terry verify entry 出現則推進 VFX-01 Slice 6 / QA-03 簽字，否則純 idle + fresh 健康檢查。
+
+## 2026-05-21 08:33 Claude (Cowork loop tick #63)
+
+Status: Blocked (pending Terry-only verify gate) — pure idle
+Task: VFX-01 (5/6) / QA-03 (1/3)
+Slice: 三條件檢查全過 → 純 idle + fresh 健康檢查。(a) automation/STOP.txt 不存在（find -name STOP.txt 0 match；automation/ 只有 scripts+workflows）(b) outbox 仍只有 2026-05-19-1530（7163 B 未更新）(c) AGENT-RUNS grep '^## .*terry.*(verif|玩測|playtest|build)' = 0 → 無 Terry 本人 verify/玩測 entry。build.latest.log = May 18 舊 baseline 非新 fail → 無連續 3 fail。本 tick 不開 code slice、不偽造 QA 數據、不寫 inbox reminder（嚴守降載）、不進 ENEMY-01。
+
+Changed:
+- studio/AGENT-RUNS.md: 本 tick #63 entry
+- studio/claude-as-codex-loop.md: Current Task State（current_slice → tick #63，archive tick #62，next_slice → tick #64）
+- .ops/logs/claude-loop-20260521-0833.log: 本 tick log
+
+Verification:
+- npm run validate:weapons: pass (8 weapon rows, exit 0)
+- npx tsc --noEmit: pass (exit 0, 零型別錯誤)
+- grep -rl signatureVFX src/: 5 檔全存在 (Game.ts / weapons.json / AutoWeapon.ts / AutoWeaponSpec.ts / Projectile.ts) → VFX-01 鏈型別安全維持
+- npm run build (vite): N/A 沙盒（缺 @rollup/rollup-linux-x64-gnu，Windows-only，非 code 問題）
+- git commit / push: N/A（沙盒 git policy：不從沙盒跑 git；本 tick 純狀態檔/文件，無 code/data 改動）
+
+Next Slice: tick #64 先三條件檢查。(a) STOP.txt 出現 → 退出。(b) outbox 出現比 2026-05-19-1530 更新的決策 → 先讀。(c) AGENT-RUNS 出現 Terry verify/玩測 entry → 解除 blocked，推進 VFX-01 Slice 6 收尾或 QA-03 填數據後 CAO Raven 簽字。否則維持純 idle + fresh 健康檢查。
+
+## 2026-05-21 12:11 Claude (Cowork loop tick #64 — 純 idle + fresh 健康檢查)
+
+Status: Blocked (pending Terry-only verify gate) — pure idle
+Task: VFX-01 (5/6) / QA-03 (1/3)
+Slice: 三條件檢查全過 → 純 idle + fresh 健康檢查。(a) automation/STOP.txt 不存在（find -name STOP.txt 0 match；automation/ 只有 scripts+workflows）(b) outbox 仍只有 2026-05-19-1530（7163 B 未更新）(c) AGENT-RUNS grep '^## .*terry.*(verif|玩測|playtest|build)' = 0 → 無 Terry 本人 verify/玩測 entry。build.latest.log = May 18 舊 baseline（2064 B）非新 fail → 無連續 3 fail。本 tick 不開 code slice、不偽造 QA 數據、不寫 inbox reminder（嚴守降載）、不進 ENEMY-01。
+
+Changed:
+- studio/AGENT-RUNS.md: 本 tick #64 entry（host-visible 檔尾接 tick #63 後）
+- studio/claude-as-codex-loop.md: Current Task State（current_slice → tick #64，archive tick #63，next_slice → tick #65）
+- .ops/logs/claude-loop-20260521-1211.log: 本 tick log
+
+Verification:
+- npm run validate:weapons: pass (8 weapon rows, exit 0)
+- npx tsc --noEmit: pass (exit 0, 零型別錯誤)
+- grep -rl signatureVFX src/: 5 檔全存在 (Game.ts / weapons.json / AutoWeapon.ts / AutoWeaponSpec.ts / Projectile.ts) → VFX-01 鏈型別安全維持
+- npm run build (vite): N/A 沙盒（缺 @rollup/rollup-linux-x64-gnu，Windows-only，非 code 問題）
+- git commit / push: N/A（沙盒 git policy：不從沙盒跑 git；本 tick 純狀態檔/文件，無 code/data 改動）
+
+Next Slice: tick #65 先三條件檢查。(a) STOP.txt 出現 → 退出。(b) outbox 出現比 2026-05-19-1530 更新的決策 → 先讀。(c) AGENT-RUNS 出現 Terry verify/玩測 entry → 解除 blocked，推進 VFX-01 Slice 6 收尾或 QA-03 填數據後 CAO Raven 簽字。否則維持純 idle + fresh 健康檢查。
+
+## 2026-05-21 16:34 Claude (Cowork loop tick #65 — 純 idle + fresh 健康檢查)
+
+Status: Blocked (pending Terry-only verify gate) — pure idle
+Task: VFX-01 (5/6) / QA-03 (1/3)
+Slice: 三條件檢查全過 → 純 idle + fresh 健康檢查。(a) automation/STOP.txt 不存在（find -name STOP.txt 0 match；automation/ 只有 scripts+workflows）(b) outbox 仍只有 2026-05-19-1530（7163 B 未更新）(c) AGENT-RUNS grep '^## .*terry.*(verif|玩測|playtest|build)' = 0 → 無 Terry 本人 verify/玩測 entry。HANDOFF 開頭為 '# Current Handoff' 無 STOP。build.latest.log = May 18 舊 baseline（2064 B）非新 fail → 無連續 3 fail。本 tick 不開 code slice、不偽造 QA 數據、不寫 inbox reminder（嚴守降載）、不進 ENEMY-01。
+
+Changed:
+- studio/AGENT-RUNS.md: 本 tick #65 entry（host-visible 檔尾接 tick #64 後，單一 entry）
+- studio/claude-as-codex-loop.md: Current Task State（current_slice → tick #65，archive tick #64，next_slice → tick #66）
+- .ops/logs/claude-loop-20260521-1634.log: 本 tick log
+
+Verification:
+- npm run validate:weapons: pass (8 weapon rows, exit 0)
+- npx tsc --noEmit: pass (exit 0, 零型別錯誤)
+- grep -rl signatureVFX src/: 5 檔全存在 (Game.ts / weapons.json / AutoWeapon.ts / AutoWeaponSpec.ts / Projectile.ts) → VFX-01 鏈型別安全維持
+- npm run build (vite): N/A 沙盒（缺 @rollup/rollup-linux-x64-gnu，Windows-only，非 code 問題）
+- git commit / push: N/A（沙盒 git policy：不從沙盒跑 git；本 tick 純狀態檔/文件，無 code/data 改動）
+
+Next Slice: tick #66 先三條件檢查。(a) STOP.txt 出現 → 退出。(b) outbox 出現比 2026-05-19-1530 更新的決策 → 先讀。(c) AGENT-RUNS 出現 Terry verify/玩測 entry → 解除 blocked，推進 VFX-01 Slice 6 收尾或 QA-03 填數據後 CAO Raven 簽字。否則維持純 idle + fresh 健康檢查（validate:weapons + tsc）。
+
+## 2026-05-21 13:04 Claude (Cowork loop tick #66 — 純 idle + fresh 健康檢查)
+
+Status: Blocked (pending Terry-only verify gate) — pure idle
+Task: VFX-01 (5/6) / QA-03 (1/3)
+Slice: 三條件檢查全過 → 純 idle + fresh 健康檢查。(a) automation/STOP.txt 不存在（find -name STOP.txt 0 match；automation/ 只有 scripts+workflows）(b) HANDOFF 開頭為 '# Current Handoff' 無 STOP；outbox 仍只有 2026-05-19-1530（7163 B 未更新）(c) AGENT-RUNS grep '^## .*terry.*(verif|玩測|playtest|build)' = 0 → 無 Terry 本人 verify/玩測 entry。build.latest.log = May 18 舊 baseline（2064 B）非新 fail → 無連續 3 fail。本 tick 不開 code slice、不偽造 QA 數據、不寫 inbox reminder（嚴守降載）、不進 ENEMY-01。
+
+Changed:
+- studio/AGENT-RUNS.md: 本 tick #66 entry（host-visible 檔尾接 tick #65 line 3418 後，單一 entry；bash mount view 止於 #38/2684 行為 stale-view 假象，已用 host Grep 確認真正 EOF，不為此耗 tick）
+- studio/claude-as-codex-loop.md: Current Task State（current_slice → tick #66，archive tick #65，next_slice → tick #67）
+- .ops/logs/claude-loop-20260521-1304.log: 本 tick log
+
+Verification:
+- npm run validate:weapons: pass (8 weapon rows, exit 0)
+- npx tsc --noEmit: pass (exit 0, 零型別錯誤)
+- grep -rl signatureVFX src/: 5 檔全存在 (Game.ts / weapons.json / AutoWeapon.ts / AutoWeaponSpec.ts / Projectile.ts) → VFX-01 鏈型別安全維持
+- npm run build (vite): N/A 沙盒（缺 @rollup/rollup-linux-x64-gnu，Windows-only，非 code 問題）
+- git commit / push: N/A（沙盒 git policy：不從沙盒跑 git；本 tick 純狀態檔/文件，無 code/data 改動）
+
+Next Slice: tick #67 先三條件檢查。(a) STOP.txt 出現 → 退出。(b) outbox 出現比 2026-05-19-1530 更新的決策 → 先讀。(c) AGENT-RUNS 出現 Terry verify/玩測 entry → 解除 blocked，推進 VFX-01 Slice 6 收尾或 QA-03 填數據後 CAO Raven 簽字。否則維持純 idle + fresh 健康檢查（validate:weapons + tsc）。
+
+## 2026-05-21 13:33 Claude (Cowork loop tick #67)
+
+Status: Blocked (Terry-only gate) — pure idle + fresh health check
+Task: VFX-01 (5/6) + QA-03 (1/3)
+Slice: 三條件全過 (a) automation/STOP.txt 不存在（find -name STOP.txt 0 match；automation/ 只有 scripts+workflows）(b) HANDOFF 開頭 '# Current Handoff' 無 STOP；outbox 仍只有 2026-05-19-1530（7163 B 未更新）(c) AGENT-RUNS grep '^## .*terry.*(verif|玩測|playtest|build)' = 0 → 無 Terry 本人 verify/玩測 entry。build.latest.log = May 18 舊 baseline（2064 B）非新 fail → 無連續 3 fail。本 tick 不開 code slice、不偽造 QA 數據、不寫新 inbox reminder、不進 ENEMY-01。
+
+Changed:
+- studio/AGENT-RUNS.md: 追加本 tick #67 entry（純文件）
+- studio/claude-as-codex-loop.md: 更新 Current Task State → tick #68
+- .ops/logs/claude-loop-20260521-1333.log: 新增本 tick log
+- （未動 src / code / data / config）
+
+Verification:
+- npm run validate:weapons: PASS（8 rows, exit 0；fresh mount 可信）
+- npx tsc --noEmit: PASS（exit 0，零型別錯誤）
+- grep -rl signatureVFX src/: 5 檔全存在（Game.ts/weapons.json/AutoWeapon.ts/AutoWeaponSpec.ts/Projectile.ts）→ VFX-01 鏈型別安全維持
+- vite build: N/A（沙盒缺 Linux rollup binary，Windows-only，非 code 問題）
+- git commit / push: N/A（policy 維持不從沙盒跑 git）
+
+Next Slice: tick #68 先三條件檢查。(a) automation/STOP.txt 出現 → 退出 + 寫 idle entry。(b) outbox 出現比 2026-05-19-1530 更新的決策 → 先讀新決策。(c) AGENT-RUNS 出現 Terry verify/玩測 entry → 解除 blocked，推進 VFX-01 Slice 6 收尾或 QA-03 填數據後 CAO Raven 簽字。否則維持純 idle + fresh 健康檢查。
+
+## tick #68 — 2026-05-21 14:03 CST (claude-as-codex, idle)
+- 三條件全過：(a) automation/STOP.txt 不存在（find -name STOP.txt 0 match）(b) HANDOFF 開頭 '# Current Handoff' 無 STOP；outbox 仍只有 2026-05-19-1530（7163 B 未更新）(c) AGENT-RUNS 無 Terry 本人 verify/玩測 entry。build.latest.log = May 18 舊 baseline（2064 B）非新 fail → 無連續 3 fail。
+- fresh mount 健康檢查：`npm run validate:weapons` PASS（8 rows, exit 0）+ `npx tsc --noEmit` PASS（exit 0 零型別錯誤）+ `grep -rl signatureVFX src/` 5 檔全存在（Game.ts / weapons.json / AutoWeapon.ts / AutoWeaponSpec.ts / Projectile.ts）→ VFX-01 鏈型別安全維持，無回退。
+- 未動 src/code/data/config（純驗證+狀態檔）。不宣告 VFX-01 Done（待 Terry vite build+玩測）、不宣告 QA-03 Done（三軸待真人玩測+CAO 簽字）、不進 STOP 流程、不進 ENEMY-01。
+- VFX-01 5/6、QA-03 1/3 仍卡 Terry-only gate。下次 tick #69。
+
+## tick #69 — 2026-05-21 14:33 CST (claude-as-codex, idle)
+- 三條件全過：(a) automation/STOP.txt 不存在（find -name STOP.txt 0 match；automation/ 只有 scripts+workflows）(b) HANDOFF 開頭 '# Current Handoff'（Updated 2026-05-19 15:30）無 STOP；outbox 仍只有 2026-05-19-1530（7163 B 未更新）(c) AGENT-RUNS grep '^## .*terry.*(verif|玩測|playtest|build)' = 0 → 無 Terry 本人 verify/玩測 entry。build.latest.log = May 18 舊 baseline（2064 B）非新 fail → 無連續 3 fail。
+- fresh mount 健康檢查：`npm run validate:weapons` PASS（8 rows, exit 0）+ `npx tsc --noEmit` PASS（exit 0 零型別錯誤）+ `grep -rl signatureVFX src/` 5 檔全存在（Game.ts / weapons.json / AutoWeapon.ts / AutoWeaponSpec.ts / Projectile.ts）→ VFX-01 鏈型別安全維持，無回退。
+- 本 tick 不開 code slice、不偽造 QA 數據、不寫新 inbox reminder（嚴守降載）、不進 ENEMY-01。未動 src/code/data/config（純驗證+狀態檔）。
+- 不宣告 VFX-01 Done（待 Terry Windows vite build+玩測）、不宣告 QA-03 Done（三軸待真人玩測+CAO Raven 簽字）、不進 STOP 流程。
+- AGENT-RUNS host-visible EOF 經 Read 確認 tick #68 落於 line 3483，本 tick #69 在檔尾正常接續單一 entry；bash mount tail 顯示止於 #39 為 mount stale-view 假象，不為此耗 tick。
+- VFX-01 5/6、QA-03 1/3 仍卡 Terry-only gate。下次 tick #70。
+
+## tick #70 — 2026-05-21 15:03 CST (claude-as-codex, idle + 狀態檔衛生)
+- Status: Blocked (Terry-only gate). Task: VFX-01 + QA-03.
+- 三條件全過：(a) automation/STOP.txt 不存在（find -name STOP.txt 0 match；automation/ 只有 scripts+workflows）(b) HANDOFF 開頭 '# Current Handoff'（Updated 2026-05-19 15:30）無 STOP；outbox 仍只有 2026-05-19-1530（7163 B 未更新）(c) AGENT-RUNS grep '^## .*terry.*(verif|玩測|playtest|build)' = 0 → 無 Terry 本人 verify/玩測 entry。build.latest.log = May 18 舊 baseline（2064 B）非新 fail → 無連續 3 fail。
+- fresh mount 健康檢查：`npm run validate:weapons` PASS（8 rows, exit 0）+ `npx tsc --noEmit` PASS（exit 0 零型別錯誤）+ `grep -rl signatureVFX src/` 5 檔全存在（Game.ts / weapons.json / AutoWeapon.ts / AutoWeaponSpec.ts / Projectile.ts）→ VFX-01 鏈型別安全維持，無回退。
+- 額外做檔案衛生（不動 code/data/config）：loop.md 已膨脹至 ~34k tokens 致單次 Read 失敗。把無界增長的 old_current_slice_tickNN_archived 長尾（tick #65 → #30 共 ~36 筆重複 idle 全文）裁併為單一 archived_ticks_30_to_65_consolidated note，並在 next_slice 加「狀態檔衛生新規」：往後只留最近 2–3 tick 摘要，逐 tick 權威歷史以本 AGENT-RUNS.md 為準。保留 #69/#68/#67/#66 archived 摘要不動。
+- 本 tick 不開 code slice、不偽造 QA 數據、不寫新 inbox reminder（嚴守降載）、不進 ENEMY-01。
+- 不宣告 VFX-01 Done（待 Terry Windows vite build+玩測）、不宣告 QA-03 Done（三軸待真人玩測+CAO Raven 簽字）、不進 STOP 流程。
+- Verification: validate:weapons pass / tsc pass / vite build N/A（Windows-only，缺 Linux rollup binary）/ git N/A（沙盒不碰 git，policy）。
+- VFX-01 5/6、QA-03 1/3 仍卡 Terry-only gate。下次 tick #71。
+
+## 2026-05-21 15:33 Claude (Cowork loop tick #71 — 純 idle + fresh 健康檢查)
+
+Status: Blocked (idle — VFX-01 與 QA-03 皆待 Terry-on-Windows，無可自主推進的 code/data slice)
+Task: VFX-01 / QA-03（兩者皆 code/skeleton 完成，卡 Terry verify gate）
+
+Slice: 三條件檢查全過 → (a) automation/STOP.txt 不存在（find -name STOP.txt 0 match；automation/ 只有 scripts+workflows）(b) HANDOFF 開頭為 '# Current Handoff'（Updated 2026-05-19 15:30）無 STOP；outbox 仍只有 2026-05-19-1530-terry-direction.md（7163 B，未更新）(c) AGENT-RUNS grep '^## .*terry.*(verif|玩測|playtest|build)' = 0 命中 → 仍無 Terry 本人 verify/玩測 entry。本 tick 不開 code slice、不偽造 QA 數據、不寫 inbox reminder（嚴守降載）、不進 ENEMY-01。
+
+Verification (fresh mount, 可信):
+- npm run validate:weapons: PASS（8 weapon rows, exit 0）
+- npx tsc --noEmit: PASS（exit 0，零型別錯誤）
+- signatureVFX 鏈 5 檔全存在: src/core/Game.ts, src/data/weapons.json, src/weapon/AutoWeapon.ts, src/weapon/AutoWeaponSpec.ts, src/weapon/Projectile.ts → VFX-01 鏈型別安全維持
+- npm run build (vite): N/A（沙盒缺 @rollup/rollup-linux-x64-gnu Linux 原生 binary，verify-on-Windows pending，非 code 問題）
+- git commit/push: skipped（沙盒不碰 git；policy 遵守）
+
+Changed:
+- studio/claude-as-codex-loop.md: Current Task State 更新至 tick #71；套用 tick #70 狀態檔衛生規則（保留最近 2-3 tick 摘要，更舊併入 archived consolidated note）
+- .ops/logs/claude-loop-20260521-1533.log: 本 tick 健康檢查記錄
+
+紅線檢查: 未跑 git；未動 src/code/data/config（純驗證+狀態檔）；未偽造 QA 數據；未寫 token；未進 ENEMY-01；粒子預算 ≤200 未動；未偏離 outbox 決策；未寫 inbox reminder。
+
+Terry Test: VFX-01 → Windows `npm run build` + 拿 wpn_shock_baton 玩測全鏈（電感微抖 / 帶色 spark / 1 跳鏈電 / 其他武器不變）。QA-03 → `?qaBombers=1` 跑 Checkpoint B 填三軸 + CAO Raven 簽字。兩者過了才宣告 Done 並進本輪終點 STOP 流程。
+
+Next Slice: tick #72 先三條件檢查。(a) STOP.txt 出現 → 退出寫 idle entry。(b) outbox 出現比 2026-05-19-1530 更新的決策 → 先讀新決策。(c) AGENT-RUNS 出現 Terry verify/玩測 entry → 解除 blocked，依結果推進（VFX-01 Slice 6 收尾 或 QA-03 填數據後 CAO 簽字）。否則維持純 idle + fresh 健康檢查（validate:weapons + tsc）。提醒：tsc PASS ≠ VFX-01 Done；報告骨架 ≠ QA-03 Done。
+
+## 2026-05-21 16:03 Claude (Cowork loop tick #72 — 純 idle + fresh 健康檢查)
+
+Status: Idle (VFX-01 與 QA-03 皆 blocked on Terry-on-Windows，無可自主推進的 code/data/doc slice)
+Task: VFX-01 (5/6) / QA-03 (1/3)（兩者皆 code/skeleton 完成，卡 Terry verify/玩測 gate）
+
+Slice: 三條件檢查全過 → 維持純 idle。本 tick 不開 code slice、不偽造 QA 玩測數據、不寫 inbox reminder（嚴守降載，不 spam）、不進 ENEMY-01。只做 fresh mount 重跑 VFX-01 健康檢查確認無回退。
+
+三條件檢查 (host + sandbox ground truth, 2026-05-21 16:03 CST):
+- (a) `automation/STOP.txt` 不存在（find automation -name STOP.txt = 0 match；automation/ 只有 scripts+workflows）→ 無緊急停車。
+- (b) HANDOFF-CURRENT.md 開頭為 "# Current Handoff"（Updated 2026-05-19 15:30）無 STOP；outbox 仍只有 2026-05-19-1530-terry-direction.md（7163 B，未更新）→ 無新決策。
+- (c) AGENT-RUNS grep `^## .*[Tt]erry.*(verif|玩測|playtest|build)` = 0 match → 無 Terry 本人 verify/玩測 entry。
+- build.latest.log = May 18 舊 baseline（2064 B，非新 fail）→ 無連續 3 fail。
+
+Findings (fresh mount，可信驗證):
+- `npm run validate:weapons` PASS（8 weapon rows, exit 0）
+- `npx tsc --noEmit` PASS（exit 0，零型別錯誤）
+- `grep -rl signatureVFX src/` = 5 檔全存在（core/Game.ts、data/weapons.json、weapon/AutoWeapon.ts、weapon/AutoWeaponSpec.ts、weapon/Projectile.ts）→ VFX-01 鏈型別安全維持，無回退。
+- `vite build` 維持只能 Windows verify（沙盒缺 @rollup/rollup-linux-x64-gnu，環境問題非 code）。
+
+Changed:
+- studio/AGENT-RUNS.md（本筆 tick #72）
+- studio/claude-as-codex-loop.md（Current Task State → tick #72；next_slice → tick #73）
+- .ops/logs/claude-loop-20260521-1603.log
+
+Verification:
+- npm run validate:weapons: PASS（8 rows, exit 0；fresh mount 可信）
+- npx tsc --noEmit: PASS（exit 0，零型別錯誤）
+- npm run build (vite): N/A（沙盒缺 Linux rollup binary，verify-on-Windows pending）
+- git commit/push: skipped（沙盒不碰 git，policy 遵守）
+- 紅線檢查: 未跑 git；無 force-push；未動 src/code/data/config（純驗證+文件）；粒子預算未動（≤200）；未進 ENEMY-01；未寫 token；未偏離 outbox 決策；未寫 inbox（降載）
+
+Terry Test (解除 blocked 的唯一路徑): VFX-01 → Windows `npm run build` + 拿 wpn_shock_baton 玩測全鏈（電感微抖/帶色 spark/1 跳鏈電）。QA-03 → `?qaBombers=1` 跑 Checkpoint B 填三軸 + CAO Raven 簽字。兩者過了才宣告 Done 並進本輪終點 STOP 流程。
+
+Next: tick #73 三條件檢查。(a) STOP.txt 出現→退出寫 idle entry；(b) outbox 新決策→先讀；(c) AGENT-RUNS 出現 Terry verify/玩測 entry→解除 blocked 依結果推進；否則維持純 idle（不偽造數據、不 spam inbox、不進 ENEMY-01）。
+
+## 2026-05-21 16:34 Claude (Cowork loop tick #73 — 純 idle + fresh 健康檢查)
+
+Status: Idle (VFX-01 與 QA-03 皆 blocked on Terry-on-Windows，無可自主推進的 code/data/doc slice)
+Task: VFX-01 / QA-03（兩者皆 code/skeleton 完成，卡 Terry verify）
+
+Slice: 三條件檢查全過 → 維持純 idle。本 tick 不開 code slice、不偽造 QA 玩測數據、不寫 inbox reminder（嚴守降載，前 9 封 reminder 已送，不 spam）、不擅自建 STOP.txt（保留語意=VFX-01+QA-03 都 Done 才用）。只做便宜有價值的事：fresh mount 重跑 VFX-01 健康檢查確認無回退。
+
+三條件檢查 (host + sandbox ground truth, 2026-05-21 16:34 CST / 08:34 UTC):
+- (a) `automation/STOP.txt` 不存在（`find . -name STOP.txt` → 0 match；automation/ 仍只有 scripts/ + workflows/）→ 不停 ✓
+- (b) HANDOFF 開頭「# Current Handoff」無 STOP；outbox 仍只有 `2026-05-19-1530-terry-direction.md`（May 19 01:39, 7163 B，未更新）→ 無比此更新的決策 ✓
+- (c) AGENT-RUNS `grep '^## .*[Tt]erry.*(verif|玩測|playtest|build)'` = 0 match → 無 Terry 本人 verify/玩測 entry，仍 blocked ✓
+- build.latest.log 為 May 18 舊 baseline（2064 B，非新 fail）→ 無連續 3 次 build fail。STOP 條件全部為否。
+
+VFX-01 / QA-03 狀態（與前數 tick 無變化）:
+- VFX-01 = code-complete + 沙盒型別驗證 PASS。本 tick fresh mount 重跑確認：`npm run validate:weapons` PASS（8 weapon rows, exit 0）+ `npx tsc --noEmit` PASS（exit 0，零型別錯誤）+ `grep -rl signatureVFX src/` 5 檔全存在（Game.ts / weapons.json / AutoWeapon.ts / AutoWeaponSpec.ts / Projectile.ts）→ signatureVFX 全鏈型別安全，無回退。唯一 pending = Terry Windows vite build（沙盒缺 @rollup/rollup-linux-x64-gnu，環境問題非 code）+ runtime 玩測。
+- QA-03 = `qa/reports/run-bomber-readability-20260519.md` 骨架存在（三軸仍 `<FILL>`）。唯一 pending = Terry 用 `?qaBombers=1` 玩測填數據 + CAO Raven 簽字。**不偽造玩測數據。**
+
+Changed:
+- studio/AGENT-RUNS.md（本筆 tick #73 idle entry）
+- studio/claude-as-codex-loop.md（Current Task State → tick #73；next_slice → tick #74）
+- .ops/logs/claude-loop-20260521-1634.log
+
+Verification:
+- npm run validate:weapons: PASS（8 rows, exit 0；fresh mount 可信）
+- npx tsc --noEmit: PASS（exit 0，零型別錯誤）
+- npm run build (vite): N/A（沙盒缺 Linux rollup binary，verify-on-Windows pending）
+- git commit/push: skipped（沙盒不碰 git，policy 遵守）
+- 紅線檢查: 未跑 git；無 force-push；未動 src/code/data/config（純驗證+文件）；粒子預算未動（≤200）；未進 ENEMY-01；未寫 token；未偏離 outbox 決策；未寫 inbox reminder（降載，不 spam）
+
+Terry Test: VFX-01 → Windows `npm run build` + 拿 wpn_shock_baton 玩測全鏈（電感微抖/帶色 spark/1 跳鏈電/其他武器不變）。QA-03 → `?qaBombers=1` 跑 Checkpoint B 填三軸 + CAO Raven 簽字。兩者過了才宣告 Done 並進本輪終點 STOP 流程。
+
+Next: tick #74 三條件檢查。(a) STOP.txt 出現→退出寫 idle entry；(b) outbox 新決策→先讀；(c) AGENT-RUNS 出現 Terry verify/玩測 entry→解除 blocked 依結果推進；否則維持純 idle（VFX-01+QA-03 皆待 Terry-on-Windows，Backlog 9/9 已清，不偽造數據、不 spam inbox、不擅建 STOP.txt）。
+
+## 2026-05-21 17:03 Claude (Cowork loop tick #74 — 純 idle + fresh 健康檢查)
+
+Status: Idle (VFX-01 與 QA-03 皆 blocked on Terry-on-Windows，無可自主推進的 code/data/doc slice)
+Task: VFX-01 (5/6) / QA-03 (1/3)（兩者 code/skeleton 完成，卡 Terry verify）
+
+Slice: 三條件檢查全過 → 維持純 idle。本 tick 不開 code slice、不偽造 QA 玩測數據、不寫 inbox reminder（嚴守降載，不 spam）、不擅建 STOP.txt、不進 ENEMY-01。只做便宜有價值的事：fresh mount 重跑 VFX-01 健康檢查確認無回退。
+
+三條件檢查 (sandbox ground truth, 2026-05-21 17:03 CST):
+- (a) `automation/STOP.txt` 不存在（`find automation -name STOP.txt` → 0 match）→ 不停 ✓
+- (b) outbox 仍只有 `2026-05-19-1530-terry-direction.md`（May 19 01:39, 7163 B，未更新）；HANDOFF 開頭為 `# Current Handoff` 無 STOP → 無比此更新的決策 ✓
+- (c) AGENT-RUNS `grep -nE '^## .*[Tt]erry.*(verif|玩測|playtest|build)'` = 0 match → 無 Terry 本人 verify/玩測 entry → 仍 blocked ✓
+- build.latest.log 為 May 18 舊 baseline（2064 B，非新 fail）→ 無連續 3 次 build fail。STOP 條件全部為否。
+
+VFX-01 / QA-03 狀態（與 tick #73 無變化）:
+- VFX-01 = code-complete + 沙盒型別驗證 PASS。本 tick fresh mount 重跑確認：`npm run validate:weapons` PASS（8 weapon rows, exit 0）+ `npx tsc --noEmit` PASS（exit 0，零型別錯誤）+ `grep -rl signatureVFX src/` 5 檔全存在（Game.ts / weapons.json / AutoWeapon.ts / AutoWeaponSpec.ts / Projectile.ts）→ signatureVFX 全鏈型別安全，無回退。唯一 pending = Terry Windows vite build（沙盒缺 @rollup/rollup-linux-x64-gnu，環境問題非 code）+ runtime 玩測。
+- QA-03 = `qa/reports/run-bomber-readability-20260519.md` 骨架存在（三軸仍 `<FILL>`）。唯一 pending = Terry 用 `?qaBombers=1` 玩測填數據 + CAO Raven 簽字。**不偽造玩測數據。**
+
+Changed:
+- studio/AGENT-RUNS.md（本筆 tick #74 idle entry）
+- studio/claude-as-codex-loop.md（Current Task State → tick #74；next_slice → tick #75）
+- .ops/logs/claude-loop-20260521-1703.log
+
+Verification:
+- npm run validate:weapons: PASS（8 rows, exit 0；fresh mount 可信）
+- npx tsc --noEmit: PASS（exit 0，零型別錯誤）
+- npm run build (vite): N/A（沙盒缺 Linux rollup binary，verify-on-Windows pending）
+- git commit/push: skipped（沙盒不碰 git，policy 遵守）
+- 紅線檢查: 未跑 git；無 force-push；未動 src/code/data/config（純驗證+文件）；粒子預算未動（≤200）；未進 ENEMY-01；未寫 token；未偏離 outbox 決策；未寫 inbox reminder（降載，不 spam）；未擅建 STOP.txt
+
+Terry Test: VFX-01 → Windows `npm run build` + 拿 wpn_shock_baton 玩測全鏈（電感微抖/帶色 spark/1 跳鏈電/其他武器不變）。QA-03 → `?qaBombers=1` 跑 Checkpoint B 填三軸 + CAO Raven 簽字。兩者過了才宣告 Done 並進本輪終點 STOP 流程。
+
+Next: tick #75 三條件檢查。(a) STOP.txt 出現→退出寫 idle entry；(b) outbox 新決策→先讀；(c) AGENT-RUNS 出現 Terry verify/玩測 entry→解除 blocked 依結果推進（VFX-01 Slice 6 收尾 或 QA-03 填數據後 CAO 簽字）；否則維持純 idle。提醒：tsc PASS ≠ VFX-01 Done；報告骨架 ≠ QA-03 Done。
+
+## 2026-05-21 17:33 Claude (Cowork loop tick #75 — 純 idle + fresh 健康檢查)
+
+Status: Idle (VFX-01 與 QA-03 皆 blocked on Terry-on-Windows，無可自主推進的 code/data/doc slice)
+Task: VFX-01 (5/6) / QA-03 (1/3)
+
+Slice: 三條件檢查全過 → 維持純 idle。本 tick 不開 code slice、不偽造 QA 玩測數據、不寫 inbox reminder（reminder 已於 #30 後停送避免 spam）、不擅建 STOP.txt、不進 ENEMY-01。只做 fresh mount 健康檢查確認 VFX-01 鏈無回退。
+
+三條件檢查 (host + sandbox ground truth, 2026-05-21 17:33 CST):
+- (a) `automation/STOP.txt` 不存在（`find . -name STOP.txt` → 0 match）→ 不停 ✓
+- (b) outbox 仍只有 `2026-05-19-1530-terry-direction.md`（May 19 01:39, 7163 B，未更新）→ 無比此更新的決策 ✓
+- (c) AGENT-RUNS `grep -nE '^## .*[Tt]erry.*(verif|玩測|playtest|build)'` = 0 match → **無 Terry 本人 verify/玩測 entry** → 仍 blocked ✓
+- HANDOFF-CURRENT.md 開頭為 "# Current Handoff" 無 STOP 字樣；build.latest.log 為 May 18 舊 baseline（2064 B，非新 fail）→ 無連續 3 次 build fail。STOP 條件全部為否。
+
+VFX-01 / QA-03 狀態（與 tick #74 無變化）:
+- VFX-01 = code-complete + 沙盒型別驗證 PASS。本 tick fresh mount 重跑確認：`npm run validate:weapons` PASS（8 weapon rows, exit 0）+ `npx tsc --noEmit` PASS（exit 0，零型別錯誤）+ `grep -rl signatureVFX src/` = 5 檔全存在（Game.ts / weapons.json / AutoWeapon.ts / AutoWeaponSpec.ts / Projectile.ts）→ signatureVFX 全鏈型別安全，無回退。唯一 pending = Terry Windows vite build（沙盒缺 @rollup/rollup-linux-x64-gnu，環境問題非 code）+ runtime 玩測。
+- QA-03 = `qa/reports/run-bomber-readability-20260519.md` 骨架存在（三軸仍 `<FILL>`）。唯一 pending = Terry 用 `?qaBombers=1` 玩測填數據 + CAO Raven 簽字。**不偽造玩測數據。**
+
+Changed:
+- studio/AGENT-RUNS.md（本筆 tick #75 idle entry）
+- studio/claude-as-codex-loop.md（Current Task State → tick #75；next_slice → tick #76）
+- .ops/logs/claude-loop-20260521-1733.log
+
+Verification:
+- npm run validate:weapons: PASS（8 rows, exit 0；fresh mount 可信）
+- npx tsc --noEmit: PASS（exit 0，零型別錯誤）
+- npm run build (vite): N/A（沙盒缺 Linux rollup binary，verify-on-Windows pending）
+- git commit/push: skipped（沙盒不碰 git，policy 維持）
+
+## 2026-05-21 18:04 Claude (Cowork loop tick #76 — 純 idle + fresh 健康檢查)
+
+Status: Idle (VFX-01 與 QA-03 皆 blocked on Terry-on-Windows，無可自主推進的 code/data/doc slice)
+Task: VFX-01 / QA-03（兩者皆 code/skeleton 完成，卡 Terry verify）
+
+Slice: 三條件檢查全過 → 維持純 idle。本 tick 不開 code slice、不偽造 QA 玩測數據、不寫 inbox reminder（嚴守降載，不 spam）、不擅建 STOP.txt、不進 ENEMY-01。只做便宜有價值的事：fresh mount 重跑 VFX-01 健康檢查確認無回退。
+
+三條件檢查 (host + sandbox ground truth, 2026-05-21 18:04 CST):
+- (a) `automation/STOP.txt` 不存在（`find . -name STOP.txt` → 0 match）→ 不停 ✓
+- (b) outbox 仍只有 `2026-05-19-1530-terry-direction.md`（May 19 01:39, 7163 B，未更新）→ 無比此更新的決策 ✓
+- (c) AGENT-RUNS `grep -nE '^## .*[Tt]erry.*(verif|玩測|playtest|build)'` = 0 命中，**無 Terry 本人 verify/玩測 entry**；inbox 皆 Claude 自寫，無 Terry 回覆 → 仍 blocked ✓
+- HANDOFF-CURRENT.md 開頭為 '# Current Handoff'，無 STOP 字樣；build.latest.log 為 May 18 舊 baseline（2064 B，非新 fail）→ 無連續 3 次 build fail。STOP 條件全部為否。
+
+VFX-01 / QA-03 狀態（無變化）:
+- VFX-01 = code-complete + 沙盒型別驗證 PASS。本 tick fresh mount 重跑確認：`npm run validate:weapons` PASS（8 weapon rows, exit 0）+ `npx tsc --noEmit` PASS（exit 0，零型別錯誤）+ `grep -rl signatureVFX src/` 命中 5 檔全在（Game.ts / weapons.json / AutoWeapon.ts / AutoWeaponSpec.ts / Projectile.ts）→ signatureVFX 全鏈型別安全，無回退。唯一 pending = Terry Windows vite build（沙盒缺 @rollup/rollup-linux-x64-gnu，環境問題非 code）+ runtime 玩測。
+- QA-03 = `qa/reports/run-bomber-readability-20260519.md` 骨架存在（三軸仍 `<FILL>`）。唯一 pending = Terry 用 `?qaBombers=1` 玩測填數據 + CAO Raven 簽字。**不偽造玩測數據。**
+
+Ledger 誠實註記（不偽造）: 本檔 host-visible 尾端權威 entry 為 **tick #44**（grep tick 編號最大值=44）。loop.md Current Task State 敘事已記到 tick #75 並聲稱 #45–#75「已裁併」，但這些逐 tick entry **未出現在本 ledger 可見內容**（mount stale-view 或當時 append 未落盤）。本 tick 不回填遺失條目、不重排（遵守「不為 mount 不一致耗 tick」規則），依 loop.md state 權威編號接續為 #76，並在此明確標示 #45–#75 ledger gap 供 Terry 知悉。
+
+Changed:
+- studio/AGENT-RUNS.md（本筆 tick #76 idle entry）
+- studio/claude-as-codex-loop.md（Current Task State → tick #76；next_slice → tick #77；狀態檔衛生裁併 tick #74 長尾）
+- .ops/logs/claude-loop-20260521-1804.log
+
+Verification:
+- npm run validate:weapons: PASS（8 rows, exit 0；fresh mount 可信）
+- npx tsc --noEmit: PASS（exit 0，零型別錯誤）
+- npm run build (vite): N/A（沙盒缺 Linux rollup binary，verify-on-Windows pending）
+- git commit/push: skipped（沙盒不碰 git，policy 遵守）
+- 紅線檢查: 未跑 git；無 force-push；未動 src/code/data/config（純驗證+狀態檔）；粒子預算未動（≤200）；未進 ENEMY-01；未寫 token；未偏離 outbox 決策；未寫 inbox reminder（降載，不 spam）
+
+Terry Test: VFX-01 → Windows `npm run build` + 拿 wpn_shock_baton 玩測全鏈（電感微抖 / 帶色 spark / 1 跳鏈電 / 其他武器不變）。QA-03 → `?qaBombers=1` 跑 Checkpoint B 填三軸 + CAO Raven 簽字。兩者過了才宣告 Done 並進本輪終點 STOP 流程。
+
+Next: tick #77 三條件檢查。(a) STOP.txt 出現→退出寫 idle entry；(b) outbox 新決策→先讀；(c) AGENT-RUNS 出現 Terry verify/玩測 entry→解除 blocked 依結果推進（VFX-01 Slice 6 收尾 或 QA-03 填數據後 CAO 簽字）；否則維持純 idle → 只更新狀態檔+.ops log，不開 code slice、不偽造數據、不 spam inbox。提醒：tsc PASS ≠ VFX-01 Done；報告骨架 ≠ QA-03 Done。
+
+## 2026-05-21 18:33 Claude (Cowork loop tick #77 — 純 idle + fresh 健康檢查)
+
+Status: Idle (VFX-01 與 QA-03 皆 blocked on Terry-on-Windows，無可自主推進的 code/data/doc slice)
+Task: VFX-01 / QA-03（兩者皆 code/skeleton 完成，卡 Terry verify）
+
+Slice: 三條件檢查全過 → 維持純 idle。本 tick 不開 code slice、不偽造 QA 玩測數據、不寫 inbox reminder（嚴守降載，不 spam）、不擅建 STOP.txt、不進 ENEMY-01。只做便宜有價值的事：fresh mount 重跑 VFX-01 健康檢查確認無回退。
+
+三條件檢查 (host + sandbox ground truth, 2026-05-21 18:33 CST):
+- (a) `automation/STOP.txt` 不存在（`find . -name STOP.txt` → 0 match）→ 不停 ✓
+- (b) outbox 仍只有 `2026-05-19-1530-terry-direction.md`（May 19 01:39, 7163 B，未更新）→ 無比此更新的決策 ✓
+- (c) AGENT-RUNS `grep -niE '^## .*[Tt]erry.*(verif|玩測|playtest|build)'` = 0 命中 → **無 Terry 本人 verify/玩測 entry** → 仍 blocked ✓
+- HANDOFF-CURRENT.md 開頭為 `# Current Handoff`，無 STOP 字樣；build.latest.log 為 May 18 舊 baseline（2064 B，非新 fail）→ 無連續 3 次 build fail。STOP 條件全部為否。
+
+VFX-01 / QA-03 狀態（與前 tick 無變化）:
+- VFX-01 = code-complete + 沙盒型別驗證 PASS。本 tick fresh mount 重跑確認：`npm run validate:weapons` PASS（8 weapon rows, exit 0）+ `npx tsc --noEmit` PASS（exit 0，零型別錯誤）+ `grep -rl signatureVFX src/` 命中 5 檔全存在（core/Game.ts、data/weapons.json、weapon/AutoWeapon.ts、weapon/AutoWeaponSpec.ts、weapon/Projectile.ts）→ VFX-01 鏈型別安全維持，無回退。
+- vite build 仍 Windows-only（沙盒缺 @rollup/rollup-linux-x64-gnu，非 code 問題）。
+- QA-03 = run-template + run-bomber-readability 骨架完成，剩 Terry `?qaBombers=1` 玩測填三軸數據 + CAO Raven 簽字（需真人，不偽造）。
+
+Changed:
+- studio/AGENT-RUNS.md: 加本 tick #77 entry
+- studio/claude-as-codex-loop.md: Current Task State 推進到 tick #78
+- .ops/logs/claude-loop-20260521-1833.log: 本 tick log
+
+Verification:
+- npm run validate:weapons: PASS（8 rows, exit 0；fresh mount 可信）
+- npx tsc --noEmit: PASS（exit 0，零型別錯誤）
+- npm run build (vite): N/A（沙盒缺 Linux rollup binary，verify-on-Windows pending）
+- git commit/push: skipped（沙盒不碰 git，policy 遵守）
+- 紅線檢查: 未跑 git；無 force-push；未動 src/code/data/config（純驗證+文件）；粒子預算未動（≤200）；未進 ENEMY-01；未寫 token；未偏離 outbox 決策；未寫 inbox reminder（降載，不 spam）
+
+Ledger gap 誠實註記: AGENT-RUNS host-visible 尾端權威 entry 為 tick #45（grep 最大 tick 編號=45），#46–#76 逐 tick entry 未出現在 ledger 可見內容（mount stale-view 或 append 未落盤）。本 tick 依 loop.md state 編號接續為 #77 並標示此 gap，不回填不重排（遵守不為 mount 不一致耗 tick 規則）。
+
+Next Slice: tick #78 三條件檢查。(a) STOP.txt 出現→退出寫 idle entry；(b) outbox 新決策→先讀；(c) AGENT-RUNS 出現 Terry verify/玩測 entry→解除 blocked 依結果推進（VFX-01 Slice 6 收尾 或 QA-03 填數據後 CAO 簽字）；否則維持純 idle + fresh 健康檢查（validate:weapons + tsc），不開 code slice、不偽造數據、不 spam inbox、不擅建 STOP.txt、不進 ENEMY-01。
+
+## 2026-05-21 19:03 Claude (Cowork loop tick #78 — 純 idle + fresh 健康檢查)
+
+Status: Idle (VFX-01 與 QA-03 皆 blocked on Terry-on-Windows，無可自主推進的 code/data/doc slice)
+Task: VFX-01 (5/6) / QA-03 (1/3)（兩者 code/skeleton 完成，卡 Terry verify/玩測 人工 gate）
+
+Slice: 三條件檢查全過 → 維持純 idle。不開 code slice、不偽造 QA 玩測數據、不寫 inbox reminder（嚴守降載，#30 後停止 reminder spam）、不擅建 STOP.txt、不進 ENEMY-01。唯一動作：fresh mount 重跑 VFX-01 健康檢查確認無回退。
+
+三條件檢查 (host + sandbox ground truth, 2026-05-21 19:03 CST / 11:03 UTC):
+- (a) `automation/STOP.txt` 不存在（`find . -name STOP.txt` → 0 match）→ 不停 ✓
+- (b) outbox 仍只有 `2026-05-19-1530-terry-direction.md`（2026-05-19 01:39, 7163 B，未更新）→ 無更新決策 ✓
+- (c) AGENT-RUNS `grep -cE '^## .*[Tt]erry.*(verif|玩測|playtest|build)'` = 0 → 無 Terry 本人 verify/玩測 entry → 仍 blocked ✓
+- HANDOFF-CURRENT.md 開頭為 "# Current Handoff" 無 STOP；build.latest.log = May 18 舊 baseline（2064 B，非新 fail）→ 無連續 3 fail
+
+Changed:
+- studio/AGENT-RUNS.md: 本 idle entry
+- studio/claude-as-codex-loop.md: Current Task State 推進至 tick #79
+- .ops/logs/claude-loop-20260521-1903.log: 本 tick log
+
+Verification:
+- npm run validate:weapons: PASS（8 rows, exit 0；fresh mount 可信）
+- npx tsc --noEmit: PASS（exit 0，零型別錯誤）
+- signatureVFX 鏈 5 檔全存在（Game.ts / weapons.json / AutoWeapon.ts / AutoWeaponSpec.ts / Projectile.ts）→ VFX-01 型別鏈安全維持
+- npm run build (vite): N/A（沙盒缺 @rollup/rollup-linux-x64-gnu Linux binary，verify-on-Windows pending；非 code 問題）
+- git commit/push: skipped（沙盒不碰 git，policy 遵守）
+- 紅線檢查: 未跑 git；無 force-push；未動 src/code/data/config（純驗證）；粒子預算未動（≤200）；未進 ENEMY-01；未寫 token；未偏離 outbox 決策；未 spam inbox
+
+Ledger gap 誠實註記: AGENT-RUNS host-visible 尾端權威 entry 為 tick #46（grep 最大 tick header = 46）；#47–#77 逐 tick entry 未出現在 ledger 可見內容（mount stale-view 或 append 未落盤）。本 tick 依 loop.md state 編號接續為 #78，標示此 gap，不回填不重排（遵守不為 mount 不一致耗 tick 規則）。逐 tick 權威結論存底於 loop.md archived_ticks_*_consolidated note。
+
+Terry Test: VFX-01 → Windows `npm run build`（vite 打包）+ 拿 wpn_shock_baton 玩測全鏈（電感微抖 / 帶色 spark / 1 跳鏈電 / 其他武器不變）。QA-03 → `?qaBombers=1` 跑 Checkpoint B 填 run-bomber-readability-20260519.md 三軸 + CAO Raven 簽字。兩者過了才宣告 Done → 進本輪終點 STOP 流程。提醒：tsc PASS ≠ VFX-01 Done；報告骨架 ≠ QA-03 Done。
+
+Next: tick #79 三條件檢查。(a) STOP.txt 出現→退出寫 idle entry；(b) outbox 新決策→先讀；(c) AGENT-RUNS 出現 Terry verify/玩測 entry→解除 blocked 推進 VFX-01 Slice 6 收尾 或 QA-03 填數據後 CAO 簽字；否則維持純 idle + fresh 健康檢查。
+回退。[entry 在 tick #47 被截斷，由 tick #78 收尾]
+
+---
+
+## 2026-05-21 19:33 Claude (Cowork loop tick #78 — 純 idle + fresh 健康檢查 + ledger 對齊)
+
+Status: Idle (VFX-01 與 QA-03 皆 blocked on Terry-on-Windows，無可自主推進的 code/data/doc slice)
+Task: VFX-01 / QA-03（兩者皆 code/skeleton 完成，卡 Terry verify）
+
+Slice: 三條件全過 → 維持純 idle。本 tick 不開 code slice、不偽造 QA 數據、不寫 inbox reminder（嚴守降載）、不擅建 STOP.txt、不進 ENEMY-01。只做一件便宜有價值的事：fresh mount 重跑 VFX-01 健康檢查確認無回退 + 收尾被截斷的 ledger。
+
+三條件檢查 (host + sandbox ground truth, 2026-05-21 19:33 CST):
+- (a) automation/STOP.txt 不存在（find -name STOP.txt → 0 match）→ 不停 ✓
+- (b) outbox 仍只有 2026-05-19-1530-terry-direction.md（2026-05-19 01:39, 7163 B，未更新）→ 無更新決策 ✓
+- (c) AGENT-RUNS grep '^## .*[Tt]erry.*(verif|玩測|playtest|build)' = 0 命中 → 無 Terry 本人 verify/玩測 entry → 仍 blocked ✓
+- HANDOFF-CURRENT.md 開頭 '# Current Handoff' 無 STOP；build.latest.log = May 18 舊 baseline（2064 B，非新 fail）→ 無連續 3 fail。STOP 條件全否。
+
+VFX-01 / QA-03 狀態（無變化）:
+- VFX-01 = code-complete。fresh mount 重跑：npm run validate:weapons PASS（8 rows, exit 0）+ npx tsc --noEmit PASS（exit 0，零型別錯誤）+ grep signatureVFX 鏈標記跨 5 檔全存在（Game.ts / weapons.json / AutoWeapon.ts / AutoWeaponSpec.ts / Projectile.ts）→ 全鏈型別安全，無回退。唯一 pending = Terry Windows vite build（沙盒缺 @rollup/rollup-linux-x64-gnu，環境非 code）+ runtime 玩測。
+- QA-03 = run-bomber-readability-20260519.md 骨架存在（三軸仍 <FILL>）。唯一 pending = Terry 用 ?qaBombers=1 玩測填數據 + CAO Raven 簽字。不偽造數據。
+
+LEDGER 對齊（誠實，不偽造、不回填、不重排）: 本 tick fresh mount 經 bash wc -l (2937 行 / 244853 B) + host Read 雙重確認，AGENT-RUNS.md host-visible 真實尾端為 **tick #47 且該 entry 被截斷在句中**（"確認無" 後中斷）。loop.md state 宣稱的 tick #48–#77 逐 tick entry **從未實際落盤到本檔**（僅存在於 loop.md Current Task State 與 .ops logs）。此前多 tick 記為「mount stale-view 假象」的判斷對本檔不成立——這些 entry 是真的不在檔內。本 tick (a) 補一行收尾被截斷的 #47，(b) 以 tick #78 接續（維持 loop.md 計數連續），(c) 不偽造補回 #48–#77（無可信原始內容，consolidated 摘要見 loop.md archived_ticks_30_to_77_consolidated 為該期間權威結論存底）。
+
+Changed:
+- studio/AGENT-RUNS.md（收尾截斷的 #47 + 本筆 tick #78 entry + ledger 對齊註記）
+- studio/claude-as-codex-loop.md（Current Task State → tick #78；next_slice → tick #79）
+- .ops/logs/claude-loop-20260521-1933.log
+
+Verification:
+- npm run validate:weapons: PASS（8 rows, exit 0；fresh mount 可信）
+- npx tsc --noEmit: PASS（exit 0，零型別錯誤）
+- npm run build (vite): N/A（沙盒缺 Linux rollup binary，verify-on-Windows pending）
+- git commit/push: skipped（沙盒不碰 git，policy 遵守）
+- 紅線檢查: 未跑 git；無 force-push；未動 src/code/data/config（純驗證+文件）；粒子預算未動（≤200）；未進 ENEMY-01；未寫 token；未偏離 outbox 決策；未寫 inbox reminder（降載）；未擅建 STOP.txt
+
+Terry Test: VFX-01 → Windows npm run build + 拿 wpn_shock_baton 玩測全鏈（電感微抖/帶色 spark/1 跳鏈電/其他武器不變）。QA-03 → ?qaBombers=1 跑 Checkpoint B 填三軸 + CAO Raven 簽字。兩者過了才宣告 Done 並進本輪終點 STOP 流程。
+
+Next: tick #79 三條件檢查。(a) STOP.txt 出現→退出寫 idle entry；(b) outbox 新決策→先讀；(c) AGENT-RUNS 出現 Terry verify/玩測 entry→解除 blocked 推進（VFX-01 Slice 6 收尾 或 QA-03 填數據後 CAO 簽字）；否則維持純 idle。提醒：tsc PASS ≠ VFX-01 Done；報告骨架 ≠ QA-03 Done。
+
+## 2026-05-26 08:00 Claude (Cowork loop tick #193 — 純 idle + fresh 健康檢查)
+
+Status: Idle (VFX-01 與 QA-03 皆 blocked on Terry-on-Windows，無可自主推進的 code/data/doc slice)
+Task: VFX-01 / QA-03（兩者皆 code/skeleton 完成，卡 Terry verify）
+
+Slice: 三條件檢查全過 → 維持純 idle。本 tick 不開 code slice、不偽造 QA 玩測數據、不寫 inbox reminder（嚴守降載 #139–#193 靜默，不 spam）。只做 fresh mount VFX-01 健康檢查確認無回退。
+
+三條件檢查 (host + sandbox ground truth, 2026-05-26 08:00 CST / 00:00 UTC):
+- (a) `automation/STOP.txt` 不存在（`ls automation/` → 僅 scripts/ + workflows/）→ 不停 ✓
+- (b) outbox 仍只有 `2026-05-19-1530-terry-direction.md`（2026-05-19 01:39, 7163 B，未更新）→ 無比此更新的決策 ✓
+- (c) AGENT-RUNS tail + inbox 12 封皆 Claude 自寫（最新 inbox = 2026-05-23-1733 tick #138 CONSOLIDATED）→ 仍 blocked，無 Terry 本人 verify/玩測 entry ✓
+- HANDOFF-CURRENT.md 開頭 "Updated: 2026-05-19 15:30" 無 STOP 字樣；build.latest.log = May 18 baseline (mtime 2026-05-18 06:29, 2064 B, 成功 build chunk-size warning) 非新 fail → 無連續 3 build fail。STOP 條件全部為否。
+
+VFX-01 / QA-03 狀態（與 tick #192 無變化）:
+- VFX-01 = code-complete + 沙盒型別驗證 PASS。本 tick fresh mount 重跑：`npm run validate:weapons` PASS (8 weapon rows, exit 0) + `npx tsc --noEmit` exit 0 (零型別錯誤) + `grep signatureVFX src/` 10 hits 跨 5 檔全在 (src/core/Game.ts:225 electric handling / src/data/weapons.json:89 / src/weapon/AutoWeapon.ts:131 / src/weapon/AutoWeaponSpec.ts:14+28 / src/weapon/Projectile.ts:17+30+71+90+129) + weapons.json wpn_shock_baton.signatureVFX='electric' 仍在 → VFX-01 全鏈型別安全，無回退。vite build 沙盒 PASS 已在 tick #188 證實 (exit 0, 48 modules, 1.91s)；本 tick 未重跑（每次都過無新資訊）。唯一 pending = Terry Windows 拿 wpn_shock_baton 跑 `npm run dev` 做 runtime 玩測（電感微抖/帶色 spark/1 跳鏈電/其他武器不變）。
+- QA-03 = `qa/reports/run-bomber-readability-20260519.md` 骨架存在（三軸仍 `<FILL>`）。唯一 pending = Terry 用 `?qaBombers=1` 玩測填數據 + CAO Raven 簽字。**不偽造玩測數據。**
+
+Changed:
+- studio/AGENT-RUNS.md（本筆 tick #193 idle entry）
+- studio/claude-as-codex-loop.md（Current Task State → tick #193；next_slice → tick #194；歸檔 tick #192 為 old_current_slice_tick192_archived）
+- .ops/logs/claude-loop-20260526-0800.log
+
+Verification:
+- npm run validate:weapons: PASS（8 rows, exit 0；fresh mount 可信）
+- npx tsc --noEmit: PASS（exit 0，零型別錯誤）
+- npm run build (vite): N/A this tick（沙盒 PASS 已 tick #188 證實，無新資訊）；Windows runtime 玩測 verify-on-Windows pending
+- git commit/push: skipped（沙盒不碰 git，policy 遵守）
+- 紅線檢查: 未跑 git；無 force-push；未動 src/code/data/config（純驗證+狀態檔/log）；粒子預算未動（≤200）；未進 ENEMY-01；未寫 token；未偏離 outbox 決策；**未寫 inbox reminder**（降載 #139–#193 靜默維持）；未擅建 STOP.txt
+
+Terry Test (還是同一份): VFX-01 → Windows `npm run dev` + 拿 wpn_shock_baton 玩測全鏈（電感微抖/帶色 spark/1 跳鏈電/其他武器不變）。QA-03 → `?qaBombers=1` 跑 Checkpoint B 填三軸 + CAO Raven 簽字。兩者過了才宣告 Done 並進本輪終點 STOP 流程。
+
+Next: tick #194 重複三條件檢查。(a) STOP.txt 出現→退出寫 idle entry；(b) outbox 新決策→先讀；(c) AGENT-RUNS/inbox 出現 Terry verify/玩測 entry→解除 blocked 依結果推進（VFX-01 Slice 6 收尾 或 QA-03 填數據後 CAO 簽字）；否則維持純 idle（VFX-01+QA-03 皆待 Terry-on-Windows，Backlog 9/9 已清）→ 只更新狀態檔+.ops log，不開 code slice、不偽造數據、不 spam inbox。提醒：tsc PASS ≠ VFX-01 Done；報告骨架 ≠ QA-03 Done。

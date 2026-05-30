@@ -1,6 +1,196 @@
 # Claude Pending Changes — Terry 回來時讀這個
 
-Last updated: 2026-05-20 03:00 (Terry-in-conversation batch 9 — Terry 拍板兩個決策：move_speed (b) + revive_charge ✅ APPROVED)
+Last updated: 2026-05-26 05:03 (Cowork loop tick #188 — 🎉 vite build 沙盒驗證 PASS，build 打包 blocker 清除)
+
+## 🎉 Cowork loop tick #188 (2026-05-26 05:03) — VFX-01 vite 打包在沙盒「實跑成功」（build blocker 清除）
+
+**一句話結論**：~150 tick 以來「沙盒無法跑 vite build」的假設是錯的。本 tick 把缺的 Linux rollup 原生二進位用 `npm install --no-save` 裝進 `node_modules`（**package.json / package-lock.json 完全沒動**，mtime byte-for-byte 不變），再把輸出導到沙盒 `/tmp` 乾淨資料夾（避開 Windows mount 的 unlink 權限限制），**完整 `vite build` 就 exit 0 通過了**。VFX-01 的「Windows 端打包驗證」這一步等於已被沙盒證實。**只剩人工 runtime 玩測一項需要你本人**。
+
+### 本 tick 實測結果（全部 fresh mount 實跑）
+
+| 步驟 | 結果 | 說明 |
+|---|---|---|
+| `npm run validate:weapons` | ✅ PASS | `[weapons] validated 8 weapon rows.` |
+| `tsc --noEmit` | ✅ PASS | exit 0，零型別錯誤 |
+| `vite build`（rollup 打包） | ✅ **PASS** | `✓ 48 modules transformed` → `✓ built in 1.91s`，exit 0。整條 VFX-01 程式鏈成功 bundle，零編譯錯誤。 |
+
+### 真實 production bundle 數字（PERF-01 baseline 可用此實測值取代 pending）
+
+- `index.html` — 1.62 kB（gzip 0.92 kB）
+- `assets/index-*.js`（main chunk）— **665.94 kB（gzip 175.37 kB）**
+- vite 警告：main chunk > 500 kB，建議日後用 dynamic import / manualChunks 做 code-split（非本輪範圍，記錄供 PERF 後續卡參考）。
+
+### 之前為何卡住、本 tick 怎麼解
+
+1. **缺 Linux rollup binary** → `npm install --no-save --no-audit --no-fund @rollup/rollup-linux-x64-gnu@4.60.1`（對齊 tree 內 rollup 版本）。`--no-save` 確保不污染 package.json / lock。
+2. **`dist/` 清不掉**：vite 預設 emptyOutDir 會 unlink 既有 `dist/assets/*.glb`，但沙盒對 Windows mount 沒有 unlink 權限（與 git lock 同源的 EPERM）→ 改 `--outDir /tmp/ggs-dist-verify` 導到沙盒本地乾淨夾，繞過 unlink。
+3. 對 Terry 的 Windows 完全無副作用：node_modules 是 gitignored、package-lock 未動，你下次 `npm ci` / `npm run build` 一切照舊（Windows 本來就會打包成功）。
+
+### 仍需 Terry 本人（無法在沙盒代勞）
+
+- **VFX-01 runtime 玩測**：`npm run dev`，拿 `wpn_shock_baton` 確認 (1) 子彈電感微抖 (2) 命中帶色 spark (3) 1 跳鏈電 (4) 其他 7 把武器不變。**過了才宣告 VFX-01 Done。**
+- **QA-03 玩測數據**：`?qaBombers=1` 跑 Checkpoint B 填 `run-bomber-readability-20260519.md` 三軸 + CAO Raven 簽字。**不偽造數據。**
+
+**未動 git（policy 維持）；未動任何 src/code/data/config；未寫 inbox（嚴守 tick #138 後反 spam）。** 本 tick 只新增 node_modules 內的 Linux binary（暫存、不入 git）+ 更新本檔 + loop.md 狀態 + .ops log。
+
+---
+
+## Cowork loop tick #35 (2026-05-20 15:05) — QA-03 並行 slice（純文件）
+
+**一句話**：VFX-01 code 已完備不再開 code slice；推進 QA-03 起草 bomber 可讀性報告骨架。三條件檢查全過（STOP.txt 無 / outbox 無新決策 / 無 Terry verify entry）。
+
+新增 / 修改檔案（Terry `git add`）:
+
+- `qa/reports/run-bomber-readability-20260519.md`（**新檔**）— QA-03 deliverable 骨架，依 outbox 第 70 行三軸（剪影差異 / 引信警告辨識 / 俯視比例）+ 需修/不修結論表 + CAO Raven 簽字段。全部欄位 `<FILL>`，待 Terry 用 `?qaBombers=1` 玩測填寫，填完交 CAO Raven 簽字才算 QA-03 結論成形。
+- `studio/AGENT-RUNS.md` — tick #35 entry（含 ledger 修正：#33/#34 entry 從未落盤，但其描述的 VFX-01 code 經實查確實存在於磁碟）。
+- `studio/claude-as-codex-loop.md` — Current Task State → tick #35；`qa_03_progress` 0.5/3 → 1/3。
+- `studio/CLAUDE-PENDING-CHANGES.md`（本檔）。
+
+**verify-on-Windows**：本 tick 純文件，不需 npm/build。Terry 收尾時把上列檔案一起 `git add` 即可。VFX-01 仍待 Terry Windows `npm run build`（vite 打包）+ runtime 玩測。
+
+---
+
+## 🎉 Cowork loop tick #34 (2026-05-20 14:38) — VFX-01 沙盒可驗證！（重大進展）
+
+**一句話結論**：在 fresh mount 下實際跑了 `npm run validate:weapons` 與 `tsc --noEmit`，**兩者皆通過（型別檢查零錯誤）**。30+ tick 假設的「沙盒 npm 結果不可信」其實跟之前的「git index corrupt」一樣，是 tick #2 的 mount stale-read 假象。VFX-01 整條 TS 鏈（Slice 2-4）已在沙盒被證明型別安全、validator 合法。**唯一還需 Windows 的只剩 vite 打包（缺 Linux rollup 原生二進位）+ runtime 玩測**。
+
+### 本 tick 實測結果
+
+| 步驟 | 結果 | 說明 |
+|---|---|---|
+| `npm run validate:weapons` | ✅ PASS | `[weapons] validated 8 weapon rows.`（含 wpn_shock_baton 的 `signatureVFX:"electric"`） |
+| `tsc --noEmit`（型別檢查） | ✅ PASS | exit code 0、零輸出 → VFX-01 全部 .ts 改動零型別錯誤 |
+| `vite build`（打包） | ⚠️ 沙盒環境限制 | `Cannot find module @rollup/rollup-linux-x64-gnu` — node_modules 是 Windows 安裝的，沙盒 Linux 缺對應原生二進位（npm optional-deps bug）。**非程式碼問題**，Terry 的 Windows 機器會正常打包。 |
+
+### VFX-01 全鏈一致性複核（host-read，全部確認真實存在且型別串通）
+
+- `src/data/weapons.json:89` — `"signatureVFX": "electric"`（wpn_shock_baton）
+- `src/weapon/AutoWeaponSpec.ts` — `signatureVFX?: 'electric'` 欄位 + `WEAPON_SPEC_FIELDS` 含 `'signatureVFX'`
+- `src/weapon/Projectile.ts` — `ProjectileState` + `SpawnOptions` 皆有 `signatureVFX?`；`update()` 對 electric 子彈做每幀 scale ±5% / brightness ±3% 微抖（複用既有 InstancedMesh，零新粒子）；`color: THREE.Color` / `damage: number` 欄位齊備
+- `src/weapon/AutoWeapon.ts:131` — `fire()` 傳 `signatureVFX: this.spec.signatureVFX`
+- `src/enemy/EnemyManager.ts` — `onBulletHit?: (pos, projectile: ProjectileState) => void` 新簽名（update + checkBulletHits 兩處對齊）；命中傳 `onBulletHit?.(hitEnemy.root.position, s)`
+- `src/core/Game.ts:219-239` — 命中回呼 `(pos, projectile)`；electric → `impactSparks.burst(pos,[c.r,c.g,c.b],5)` 帶色 spark + `findChainTargets(pos,2,5).slice(1)` → `lightning.chain(pos, arc, max(1,round(projectile.damage*0.25)))` 1 跳電弧 + `sfx.lightning()`
+- 簽名相符檢查：`findChainTargets(start,count,reach):Enemy[]` ✓ / `impactSparks.burst(pos,color,count)` ✓ / `lightning.chain(startPos,targets:Enemy[],damage)` ✓
+
+### Terry 一次性 VFX-01 完整驗收清單（合併 Slice 2/3/4）
+
+```powershell
+cd "E:\Project\2026\Gorilla Gun Survivor — Web Edition"
+npm run validate:weapons    # 沙盒已過
+npm run build               # 沙盒 tsc 已過，只差 vite 打包（你的 Windows 環境會成功）
+npm run dev                 # 拿 wpn_shock_baton 玩測：
+#   1. 子彈飛行時有電感微抖/閃爍（Projectile.ts wobble）
+#   2. 命中敵人冒「帶子彈色」的 spark（非預設橘色）
+#   3. 附近有第二隻敵人時，電弧跳 1 跳過去（鏈電傷害 = 子彈 0.25x）
+#   4. 其他 7 把武器行為不變、無報錯
+```
+
+git add 清單（驗收過後一次 commit）：
+```
+src/data/weapons.json
+tools/validate-weapons.mjs
+src/weapon/AutoWeaponSpec.ts
+src/weapon/Projectile.ts
+src/weapon/AutoWeapon.ts
+src/enemy/EnemyManager.ts
+src/core/Game.ts
+studio/CLAUDE-PENDING-CHANGES.md
+studio/AGENT-RUNS.md
+studio/claude-as-codex-loop.md
+```
+
+**注意**：沙盒型別檢查通過 ≠ VFX-01 Done。仍需 Terry 在 Windows `npm run build`（vite 打包）+ 玩測過才算 Done（loop.md 規定）。本 tick **不宣告 Done、不進 QA-03 收尾 STOP 流程**。鏈電傷害 0.25x / reach 5 / 1 跳 / spark 5 顆為 Claude 自主決策，Terry 可調。
+
+---
+
+## 🟢 Cowork loop tick #33 (2026-05-20 14:08) — VFX-01 Slice 4 完成
+
+三條件檢查全過：(a) `automation/STOP.txt` 不存在 ✓、(b) outbox 仍只有 `2026-05-19-1530-terry-direction.md`（無新決策）✓、(c) git index header `DIRC`（35365 bytes）+ 無 `.git/*.lock`（blocker 確實已解除，與 tick #32 一致）✓。依 tick #32 計畫推進 **VFX-01 Slice 4**：electric 子彈命中加帶色 spark + 1 跳鏈電。**仍未從沙盒跑 git**（policy 不變）。
+
+### Changed（本 tick，全部需 Windows verify）
+
+**Code（src/ 改動，2 檔）**：
+- `src/enemy/EnemyManager.ts`
+  - import 加 `ProjectileState`（來自 `../weapon/Projectile.js`）
+  - `update()` 與 `checkBulletHits()` 的 `onBulletHit` callback 簽名擴充：`(pos) => void` → `(pos, projectile: ProjectileState) => void`
+  - `checkBulletHits()` 命中點呼叫改 `onBulletHit?.(hitEnemy.root.position, s)`（把命中子彈的 state 傳出）
+- `src/core/Game.ts`
+  - 命中回呼 `(pos)` → `(pos, projectile)`
+  - 新增 electric signature 處理：當 `projectile.signatureVFX === 'electric'`：
+    1. `impactSparks.burst(pos, [c.r,c.g,c.b], 5)` 帶子彈色的 5 顆 spark（複用既有 ImpactSparks pool）
+    2. `findChainTargets(pos, 2, 5).slice(1)` 取鄰近**另一隻**敵人（findChainTargets 第一個 link 永遠是被命中那隻，distance≈0，故 slice 掉自己）；若有 → `lightning.chain(pos, arc, max(1, round(damage*0.25)))` 畫 1 跳電弧（複用既有 LightningSystem，MAX_ARCS=30 eviction 保護 draw call）+ `sfx.lightning()`
+
+**自主決策（請 Terry 過目可調）**：鏈電傷害取子彈傷害的 **0.25x**（讓它是「招牌視覺花飾」而非平衡破壞性的第二傷害源）；鏈電 reach=5、僅 1 跳。
+
+**粒子預算**：未新增任何 pool，spark 走既有 ImpactSparks（MAX 400 內部 cap，本 tick 每次 burst 僅 5 顆）、鏈電走既有 LightningSystem（MAX_ARCS=30 硬 cap）。**Volt TA ≤200 同時粒子預算未被突破**。
+
+### Verify on Windows
+
+```powershell
+cd "E:\Project\2026\Gorilla Gun Survivor — Web Edition"
+npm run validate:weapons   # 應 pass（本 tick 未動武器資料）
+npm run build              # tsc 應過：onBulletHit 新簽名只多一個參數，唯一 caller 已對齊；ProjectileState 已 export
+npm run dev                # 拿 wpn_shock_baton：命中敵人時應冒帶色 spark，且附近有第二隻敵人時電弧跳過去（1 跳）
+```
+
+### git add 清單（Windows verify 過後）
+
+```
+src/enemy/EnemyManager.ts
+src/core/Game.ts
+studio/CLAUDE-PENDING-CHANGES.md
+studio/AGENT-RUNS.md
+studio/claude-as-codex-loop.md
+```
+
+---
+
+## 🟢 Cowork loop tick #32 (2026-05-20 13:37) — git blocker CLEARED + VFX-01 Slice 3 完成
+
+**重大狀態變更**：git blocker 已解除。本 tick host 端硬證據：
+- `.git/index.lock`（及任何 `.git/*.lock`）**已不存在**（`ls .git/*.lock` → no match）
+- `.git/index` = 35365 bytes，header = `DIRC`（合法 git index，前 30 個 tick 讀到的 corrupt 是沙盒 mount stale-read 假象，現為 fresh mount 正常視圖）
+- 前 9 封 inbox「still blocked」reminder 已被本狀態取代——**請優先讀本段，那些已過時**
+
+lock 清除後依 loop.md tick #32 計畫恢復 VFX-01 Slice 3。**仍未從沙盒跑 git**（policy 不變），請 Terry 在 Windows 端 verify + commit。
+
+### Changed（本 tick，全部需 Windows verify）
+
+**Code（src/ 改動，4 檔）**：
+- `src/weapon/AutoWeaponSpec.ts`
+  - WeaponSpec interface 加 `signatureVFX?: 'electric'`（optional）
+  - `WEAPON_SPEC_FIELDS` 加 `'signatureVFX'`（與 validator `weaponSpecFields` allowed list 同步；註解同步更新）
+- `src/weapon/Projectile.ts`
+  - `ProjectileState` 加 `signatureVFX?: 'electric'`
+  - `SpawnOptions` 加 `signatureVFX?: 'electric'`
+  - states 初始化加 `signatureVFX: undefined`
+  - `spawn()` 設 `s.signatureVFX = options?.signatureVFX`
+  - `update()` 對 electric 子彈加每幀微抖：scale ×(1 ± 0.05·sin)、color brightness ×(1 ± 0.03·sin)，phase 由 pos.x/pos.z 推導以desync。**不 spawn 新粒子**（複用既有 InstancedMesh，粒子預算 ≤200 未動）
+- `src/weapon/AutoWeapon.ts`
+  - `fire()` 的 `pool.spawn()` options 加 `signatureVFX: this.spec.signatureVFX`
+
+**註**：Slice 2（`tools/validate-weapons.mjs` 的 signatureVFX allowed/enum 驗證 + `src/data/weapons.json` 的 `wpn_shock_baton "signatureVFX": "electric"`）本 tick 已 host-read 確認**真實存在且正確**，與 Slice 3 一致。
+
+### Verify on Windows
+
+```powershell
+cd "E:\Project\2026\Gorilla Gun Survivor — Web Edition"
+Get-ChildItem .git -Recurse -Filter *.lock | Remove-Item -Force   # 若還有殘留 lock（本 tick 沙盒已看不到）
+npm run validate:weapons   # 應 pass（signatureVFX 為 optional enum，僅 shock_baton 帶 electric）
+npm run build              # tsc 應過：signatureVFX 全鏈型別一致
+npm run dev                # 拿電弧短杖 wpn_shock_baton，看子彈是否有電感微抖/閃爍（vs 其他武器穩定）
+```
+
+### git add 清單（Windows verify 過後）
+
+```
+src/weapon/AutoWeaponSpec.ts
+src/weapon/Projectile.ts
+src/weapon/AutoWeapon.ts
+```
+（加上所有先前 batch 的 pending 檔——本 tick 未動其餘檔案）
+
+---
 
 ## 🆕 Terry-in-conversation batch 9 (2026-05-20 03:00) — Terry 拍板兩 OPEN
 

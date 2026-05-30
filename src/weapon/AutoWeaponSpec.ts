@@ -10,9 +10,11 @@ export interface WeaponSpec {
   range: number;
   bulletColor: [number, number, number];
   bulletSize: number;
+  /** Optional signature visual identity for the weapon's projectiles. */
+  signatureVFX?: 'electric';
 }
 
-// Keep this list in sync with tools/validate-weapons.mjs.
+// Keep this list in sync with tools/validate-weapons.mjs (weaponSpecFields).
 export const WEAPON_SPEC_FIELDS = [
   'id',
   'title',
@@ -23,6 +25,7 @@ export const WEAPON_SPEC_FIELDS = [
   'range',
   'bulletColor',
   'bulletSize',
+  'signatureVFX',
 ] as const satisfies readonly (keyof WeaponSpec)[];
 
 export const WEAPON_SPECS = weaponData as WeaponSpec[];

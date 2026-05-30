@@ -128,6 +128,7 @@ export class AutoWeapon {
       color,
       sizeMul: this.spec.bulletSize,
       elements,
+      signatureVFX: this.spec.signatureVFX,
     });
     this.onFire?.();
   }
