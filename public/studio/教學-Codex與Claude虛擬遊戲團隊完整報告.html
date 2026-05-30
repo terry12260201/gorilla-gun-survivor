@@ -1,0 +1,409 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Codex 與 Claude 虛擬遊戲團隊完整報告</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --ink: #1d2020;
+    --muted: rgba(29,32,32,.68);
+    --paper: #f4f1e8;
+    --card: #fffdf7;
+    --line: rgba(29,32,32,.16);
+    --violet: #5c2ac6;
+    --lime: #c3ff3d;
+    --pumpkin: #f97316;
+    --cyan: #0891b2;
+  }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: "Microsoft JhengHei", "Noto Sans TC", system-ui, sans-serif;
+    background: var(--paper);
+    color: var(--ink);
+    line-height: 1.75;
+  }
+  a { color: var(--violet); text-decoration: none; font-weight: 800; }
+  a:hover { text-decoration: underline; }
+  button { font: inherit; }
+  code {
+    font-family: "Cascadia Mono", Consolas, monospace;
+    background: var(--ink);
+    color: var(--lime);
+    border-radius: 4px;
+    padding: 2px 6px;
+    font-size: 13px;
+  }
+  pre {
+    background: var(--ink);
+    color: var(--lime);
+    border-radius: 8px;
+    padding: 16px;
+    overflow-x: auto;
+    margin: 12px 0;
+    font: 13px/1.55 "Cascadia Mono", Consolas, monospace;
+  }
+  .page { max-width: 1200px; margin: 0 auto; padding: 32px 22px 72px; }
+  .hero {
+    min-height: 54vh;
+    display: grid;
+    align-content: end;
+    gap: 22px;
+    padding: 42px 0 30px;
+    border-bottom: 6px solid var(--ink);
+  }
+  .eyebrow {
+    display: inline-flex;
+    width: fit-content;
+    gap: 10px;
+    align-items: center;
+    font: 800 12px/1.2 "Cascadia Mono", Consolas, monospace;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--violet);
+    background: var(--lime);
+    border: 2px solid var(--ink);
+    padding: 8px 12px;
+    border-radius: 4px;
+  }
+  h1 {
+    font-size: clamp(38px, 7vw, 78px);
+    line-height: 1.02;
+    letter-spacing: 0;
+    max-width: 980px;
+  }
+  .subtitle { font-size: 20px; max-width: 900px; color: var(--muted); }
+  .truth {
+    background: var(--ink);
+    color: white;
+    border-radius: 8px;
+    padding: 20px 22px;
+    max-width: 980px;
+    font-size: 17px;
+  }
+  .truth strong { color: var(--lime); }
+  .tabs {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 14px 0;
+    background: rgba(244,241,232,.94);
+    backdrop-filter: blur(10px);
+    border-bottom: 1px solid var(--line);
+  }
+  .tab-button {
+    border: 2px solid var(--ink);
+    background: var(--card);
+    color: var(--ink);
+    border-radius: 8px;
+    padding: 9px 13px;
+    font-weight: 950;
+    cursor: pointer;
+  }
+  .tab-button.active {
+    background: var(--ink);
+    color: white;
+    box-shadow: inset 0 -5px 0 var(--lime);
+  }
+  .tab-panel { display: none; padding: 34px 0; }
+  .tab-panel.active { display: block; }
+  h2 {
+    font-size: 30px;
+    line-height: 1.2;
+    margin-bottom: 16px;
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+  }
+  h2 .num {
+    font: 900 15px/1 "Cascadia Mono", Consolas, monospace;
+    color: var(--violet);
+    background: var(--lime);
+    padding: 8px 10px;
+    border-radius: 4px;
+    border: 2px solid var(--ink);
+  }
+  h3 { color: var(--violet); margin: 22px 0 8px; font-size: 19px; }
+  p { margin: 10px 0; }
+  ul, ol { margin: 10px 0 14px 24px; }
+  li { margin: 4px 0; }
+  .grid-2, .grid-3, .grid-4 { display: grid; gap: 14px; margin: 18px 0; }
+  .grid-2 { grid-template-columns: repeat(2, 1fr); }
+  .grid-3 { grid-template-columns: repeat(3, 1fr); }
+  .grid-4 { grid-template-columns: repeat(4, 1fr); }
+  .card, .download-card {
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 18px;
+  }
+  .card strong, .download-card strong { display: block; margin-bottom: 6px; color: var(--ink); }
+  .card small, .download-card small { color: var(--muted); }
+  .metric {
+    text-align: center;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-top: 5px solid var(--violet);
+    border-radius: 8px;
+    padding: 18px 12px;
+  }
+  .metric .n { display: block; font-size: 34px; font-weight: 950; color: var(--violet); line-height: 1; }
+  .metric .label { color: var(--muted); font-size: 13px; }
+  .callout {
+    background: var(--lime);
+    border: 3px solid var(--ink);
+    border-radius: 8px;
+    padding: 18px;
+    margin: 16px 0;
+  }
+  .warn { background: #fef3c7; border-color: #d97706; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    background: var(--card);
+    border-radius: 8px;
+    overflow: hidden;
+    margin: 16px 0;
+  }
+  th, td {
+    padding: 11px 13px;
+    text-align: left;
+    border-bottom: 1px solid rgba(29,32,32,.12);
+    vertical-align: top;
+    font-size: 14px;
+  }
+  th { background: var(--ink); color: white; }
+  tr:last-child td { border-bottom: none; }
+  .flow { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin: 18px 0; }
+  .step {
+    background: var(--card);
+    border: 2px solid var(--ink);
+    border-radius: 8px;
+    padding: 14px;
+    min-height: 120px;
+  }
+  .step b { display: block; color: var(--violet); margin-bottom: 6px; }
+  .image-band { background: var(--ink); border-radius: 8px; padding: 14px; margin: 18px 0; }
+  .image-band img { display: block; width: 100%; border-radius: 6px; }
+  .caption { color: rgba(255,255,255,.72); font-size: 13px; margin-top: 8px; }
+  .role-toolbar { display: flex; flex-wrap: wrap; gap: 8px; margin: 18px 0; }
+  .role-filter {
+    border: 1px solid var(--line);
+    background: white;
+    color: var(--ink);
+    border-radius: 8px;
+    padding: 8px 11px;
+    font-weight: 900;
+    cursor: pointer;
+  }
+  .role-filter.active { background: var(--violet); color: white; border-color: var(--violet); }
+  .role-layout { display: grid; grid-template-columns: minmax(280px, 420px) 1fr; gap: 16px; align-items: start; }
+  .role-list { display: grid; gap: 10px; max-height: 680px; overflow: auto; padding-right: 4px; }
+  .role-card {
+    width: 100%;
+    text-align: left;
+    background: var(--card);
+    border: 1px solid var(--line);
+    border-left: 5px solid var(--violet);
+    border-radius: 8px;
+    padding: 12px;
+    cursor: pointer;
+  }
+  .role-card.active { border-color: var(--ink); box-shadow: inset 0 0 0 2px var(--ink); }
+  .role-card .code { font: 900 12px/1.2 "Cascadia Mono", Consolas, monospace; color: var(--pumpkin); }
+  .role-card b { display: block; margin-top: 4px; }
+  .role-card span { display: block; color: var(--muted); font-size: 13px; }
+  .prompt-viewer {
+    background: white;
+    border: 2px solid var(--ink);
+    border-radius: 8px;
+    padding: 18px;
+    min-height: 520px;
+    overflow: auto;
+  }
+  .prompt-viewer .prompt-empty { color: var(--muted); }
+  .prompt-viewer .prompt-card,
+  .prompt-viewer .prompt-section,
+  .prompt-viewer .handoff-box,
+  .prompt-viewer .prompt-note {
+    background: #fffdf7;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    padding: 12px;
+    margin: 10px 0;
+  }
+  .prompt-viewer .md-code,
+  .prompt-viewer pre {
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .download-card {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 12px;
+    align-items: center;
+  }
+  .download-card a {
+    border: 2px solid var(--ink);
+    border-radius: 8px;
+    padding: 8px 12px;
+    background: var(--lime);
+    color: var(--ink);
+    white-space: nowrap;
+  }
+  .footer { padding: 30px 0 0; color: var(--muted); font-size: 13px; }
+  @media (max-width: 920px) {
+    .grid-4, .grid-3, .grid-2, .flow, .role-layout { grid-template-columns: 1fr; }
+    .hero { min-height: auto; }
+    .tabs { position: static; }
+    .download-card { grid-template-columns: 1fr; }
+  }
+</style>
+<script src="dashboard/team-data.js"></script>
+</head>
+<body>
+<main class="page">
+  <header class="hero">
+    <span class="eyebrow">Terry Production Console / External Teaching Report</span>
+    <h1>我怎麼用 Codex 與 Claude 跑一個虛擬遊戲團隊</h1>
+    <p class="subtitle">這份網頁是給外部讀者看的整理版：從兩個終端機、可追蹤 logs、Obsidian 筆記、Dashboard、GPT Image 2 概念圖、Blender 模型，到遊戲內驗證，完整說明 Terry 如何把 AI 團隊流程變成可執行的製作中控。</p>
+    <div class="truth"><strong>目前定位：</strong>遊戲不是「完成品」，而是剛開始被整理成可持續開發的生產系統。這份 HTML 是導覽、教學、角色 Prompt、下載文件與開發紀錄的單一入口。</div>
+  </header>
+
+  <nav class="tabs" aria-label="報告分頁">
+    <button class="tab-button active" data-tab="overview">總覽</button>
+    <button class="tab-button" data-tab="team">虛擬團隊</button>
+    <button class="tab-button" data-tab="game">猩猩槍 - 倖存者</button>
+    <button class="tab-button" data-tab="workflow">開發流程</button>
+    <button class="tab-button" data-tab="pipeline">圖像到模型</button>
+    <button class="tab-button" data-tab="downloads">文件下載</button>
+  </nav>
+
+  <section id="overview" class="tab-panel active">
+    <h2><span class="num">01</span>這份報告在說什麼</h2>
+    <p>這不是一篇單純的開發日誌，而是一套「如何用 AI 工具組成虛擬遊戲團隊」的實作說明。Codex 負責 repo、腳本、驗證、Dashboard、文件整理；Claude in VS Code 負責長篇策略、角色設定、流程設計與協作視窗；Terry 則是整個製作中控的人格與操作層。</p>
+    <div class="grid-4">
+      <div class="metric"><span class="n">2</span><span class="label">主要 terminal 工作流</span></div>
+      <div class="metric"><span class="n">28+</span><span class="label">虛擬團隊角色</span></div>
+      <div class="metric"><span class="n">3</span><span class="label">已整理 GLB 資產</span></div>
+      <div class="metric"><span class="n">1</span><span class="label">GitHub Pages 遊戲入口</span></div>
+    </div>
+    <div class="grid-3">
+      <div class="card"><strong>看遊戲</strong><p><a href="https://terry12260201.github.io/gorilla-gun-survivor/">開啟 GitHub Pages 遊戲</a></p><small>外部分享時先讓讀者看到實際成果。</small></div>
+      <div class="card"><strong>看進度</strong><p><a href="dashboard/terry-progress.html">Terry Dashboard</a></p><small>本地進度儀表板，記錄流程、資產與狀態。</small></div>
+      <div class="card"><strong>看原始資料</strong><p><a href="dashboard/原始團隊規劃.html">原始團隊規劃</a></p><small>原版深色規劃已被整理進本頁的「虛擬團隊」分頁。</small></div>
+    </div>
+    <h3>關鍵資料位置</h3>
+    <table>
+      <tr><th>項目</th><th>位置</th><th>用途</th></tr>
+      <tr><td>主專案</td><td><code>E:\Project\2026\Gorilla Gun Survivor — Web Edition</code></td><td>遊戲、Dashboard、art pipeline、automation、OpenSpec。</td></tr>
+      <tr><td>Codex 工作副本</td><td><code>E:\Codex\gorilla-gun-survivor</code></td><td>Codex 可使用的工作副本與對照區。</td></tr>
+      <tr><td>Obsidian</td><td><code>E:\Obsidian\Game_GG\南瓜筆記\南瓜虛擬科技</code></td><td>長期筆記、handoff、團隊設定與操作紀錄。</td></tr>
+      <tr><td>本報告</td><td><code>studio/教學-Codex與Claude虛擬遊戲團隊完整報告.html</code></td><td>外部讀者用的教學網站。</td></tr>
+    </table>
+  </section>
+
+  <section id="team" class="tab-panel">
+    <h2><span class="num">02</span>虛擬團隊與角色 Prompt</h2>
+    <p>這一頁把 <code>原始團隊規劃.html</code> 的角色資料整理成可點選的分頁介面。外部讀者不用看原始深色頁面，也能點選 CEO、CTO、CAO、Gameplay、Art、QA 等角色，閱讀每個角色的 Prompt 與職責。常駐角色使用原始完整 Prompt；兼任角色則在本頁補成可直接貼給 AI 的完整整理版。</p>
+    <div class="role-toolbar" id="roleFilters"></div>
+    <div class="role-layout">
+      <div class="role-list" id="roleList"></div>
+      <article class="prompt-viewer" id="promptViewer">
+        <p class="prompt-empty">請從左側點選一個角色，這裡會顯示該角色的 Prompt。</p>
+      </article>
+    </div>
+  </section>
+
+  <section id="game" class="tab-panel">
+    <h2><span class="num">03</span>猩猩槍 - 倖存者</h2>
+    <p>這個分頁是專門留給遊戲本體的開發紀錄。從現在開始，每當 Terry / Codex / Claude 推進到一個新的階段，例如新增武器、完成敵人模型、跑過 QA、更新 Dashboard、部署 GitHub Pages，都會回寫到這份 HTML 報告，讓外部讀者知道「目前做到哪裡、用什麼方法做到、下一步要去哪裡」。</p>
+    <div class="callout"><strong>為什麼這很重要：</strong>遊戲開發還不是結束，而是剛把生產線搭起來。這份 HTML 會變成專案對外展示的黑盒紀錄器，讓每個環節可以被檢查、重現、分享。</div>
+    <div class="grid-2">
+      <div class="card">
+        <strong>公開遊戲連結</strong>
+        <p><a href="https://terry12260201.github.io/gorilla-gun-survivor/">https://terry12260201.github.io/gorilla-gun-survivor/</a></p>
+        <small>GitHub Pages 上的可分享版本。</small>
+      </div>
+      <div class="card">
+        <strong>本地開發伺服器</strong>
+        <p><code>http://127.0.0.1:5174/</code></p>
+        <small>本機測試、QA mode、Dashboard 檢查用。</small>
+      </div>
+    </div>
+    <h3>目前已整理的進度</h3>
+    <div class="grid-3">
+      <div class="card"><strong>武器資料化</strong><p><code>src/data/weapons.json</code> 已加入 validator，build 前會先檢查武器資料。</p></div>
+      <div class="card"><strong>Shock Baton V2</strong><p>已輸出 <code>/assets/custom/shock_baton_v2.glb</code>，並在武器資料中指向該模型。</p></div>
+      <div class="card"><strong>Plasma Bomber</strong><p>已建立 GPT Image 2 概念圖、Blender blockout / export 腳本與遊戲內資產方向。</p></div>
+      <div class="card"><strong>回血/救援掉落</strong><p><code>src/core/Game.ts</code> 與 <code>src/progression/Pickup.ts</code> 已加入愛心掉落邏輯。</p></div>
+      <div class="card"><strong>QA 模式</strong><p>可用 <code>?qaBombers=1</code> 進入敵人可讀性檢查流程。</p></div>
+      <div class="card"><strong>長期紀錄</strong><p><code>.ops/logs</code>、Obsidian、Dashboard 三處同步重要變更。</p></div>
+    </div>
+  </section>
+
+  <section id="workflow" class="tab-panel">
+    <h2><span class="num">04</span>兩個 Terminal 如何跑起來</h2>
+    <p>核心思路是把 terminal 從「一次性操作」改成「可記錄的製作系統」。Terminal A 處理 Live Ops / dev server；Terminal B 處理 build、validator、Dashboard 與文件同步。</p>
+    <div class="grid-2">
+      <div class="card">
+        <strong>Terminal A：Live Ops / Dev Server</strong>
+        <pre>cd "E:\Project\2026\Gorilla Gun Survivor — Web Edition"
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\automation\scripts\start-dev.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\automation\scripts\status-dev.ps1
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File .\automation\scripts\stop-dev.ps1</pre>
+      </div>
+      <div class="card">
+        <strong>Terminal B：Build / Dashboard</strong>
+        <pre>cd "E:\Project\2026\Gorilla Gun Survivor — Web Edition"
+npm run validate:weapons
+npm run build
+npm run dashboard:update</pre>
+      </div>
+    </div>
+    <h3>Codex 與 Claude 的分工</h3>
+    <div class="grid-2">
+      <div class="card">
+        <strong>Codex</strong>
+        <ul>
+          <li>讀 repo、改程式、跑 build、修 validator。</li>
+          <li>維護 Dashboard、HTML 報告與可下載文件。</li>
+          <li>寫 Blender Python fallback、產出 GLB 與 preview。</li>
+          <li>整理 handoff，避免每次開新視窗都重講一次。</li>
+        </ul>
+      </div>
+      <div class="card">
+        <strong>Claude in VS Code</strong>
+        <ul>
+          <li>長篇策略、團隊角色、流程描述與任務分派。</li>
+          <li>透過 VS Code 視窗與 terminal 幫忙維持工作脈絡。</li>
+          <li>當 Blender MCP 可用時，協助 3D 製作；不穩時交由 Codex fallback。</li>
+          <li>整理 pending changes、mailbox、handoff 與下一步行動。</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <section id="pipeline" class="tab-panel">
+    <h2><span class="num">05</span>GPT Image 2 → Blender → Game</h2>
+    <p>官方模型名稱是 <code>gpt-image-2</code>。目前流程是先產生概念圖，再轉成 Blender 可用的模型、材質與貼圖方向，最後輸出 GLB 放進遊戲。這不是「圖片自動變成模型」的魔法，而是一條可追蹤的美術生產線。</p>
+    <div class="flow">
+      <div class="step"><b>1 Brief</b>定義主題、視角、材質、比例尺、輸出要求。</div>
+      <div class="step"><b>2 GPT Image 2</b>產出 reference sheet 或概念圖。</div>
+      <div class="step"><b>3 CAO Review</b>審查造型、可讀性、品牌一致性。</div>
+      <div class="step"><b>4 Blender</b>Blender MCP 或 Python fallback 建模。</div>
+      <div class="step"><b>5 GLB</b>輸出到 <code>public/assets/custom</code>。</div>
+      <div class="step"><b>6 QA</b>進遊戲檢查比例、辨識度與效能。</div>
+    </div>
+    <pre>$env:OPENAI_API_KEY="你的 key"
+npm run art:concept -- studio/art-pipeline/briefs/plasma-bomber-v1.json</pre>
+    <div class="image-band">
+      <img src="../art/concepts/plasma-bomber-v1.concept.png" alt="Plasma Bomber GPT Image 2 concept sheet" />
+      <div class="caption">Plasma Bomber 概念圖：用 GPT Image 2 產生視覺方向，再轉成 Blender 可製作的 low-poly 資產。</div>
+    </div>
+    <div class="image-band">
+      <img src="../art/previews/plasma_bomber_v2.png" alt="Plasma Bo

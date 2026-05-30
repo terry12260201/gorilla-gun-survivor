@@ -1,0 +1,1017 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>我如何用 Claude 跑一個虛擬遊戲開發團隊，並且開發 Roguelike 射擊網頁遊戲</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Microsoft JhengHei", "Noto Sans TC", system-ui, sans-serif;
+    background: #f4f1e8;
+    color: #1d2020;
+    line-height: 1.75;
+    padding: 30px 20px;
+    max-width: 1200px;
+    margin: 0 auto;
+  }
+  h1 { font-size: 32px; margin-bottom: 12px; line-height: 1.3; }
+  h1 .em { color: #5c2ac6; }
+  h1 .game { color: #f59e0b; }
+  h2 {
+    font-size: 26px;
+    margin: 36px 0 16px;
+    padding: 12px 0 8px;
+    border-bottom: 4px solid #1d2020;
+  }
+  h3 {
+    font-size: 19px;
+    margin: 24px 0 8px;
+    color: #5c2ac6;
+    border-left: 5px solid #5c2ac6;
+    padding-left: 12px;
+  }
+  h4 { font-size: 16px; margin: 16px 0 6px; }
+  p { margin-bottom: 12px; }
+  ul, ol { margin: 8px 0 16px 24px; }
+  li { margin: 4px 0; }
+
+  .lead {
+    font-size: 18px;
+    color: #444;
+    margin: 16px 0 28px;
+    padding: 18px;
+    background: white;
+    border-left: 6px solid #5c2ac6;
+    border-radius: 4px;
+  }
+  .updated { font-size: 13px; color: #888; margin-bottom: 22px; }
+
+  /* TABS */
+  .tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    border-bottom: 4px solid #1d2020;
+    margin-bottom: 30px;
+    position: sticky;
+    top: 0;
+    background: #f4f1e8;
+    z-index: 10;
+    padding-top: 8px;
+  }
+  .tab-btn {
+    background: white;
+    border: 2px solid #1d2020;
+    border-bottom: none;
+    padding: 12px 18px;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 14px;
+    font-weight: 700;
+    color: #1d2020;
+    border-radius: 8px 8px 0 0;
+    transition: all 0.15s;
+  }
+  .tab-btn:hover { background: #c3ff3d; }
+  .tab-btn.active {
+    background: #5c2ac6;
+    color: white;
+    border-color: #5c2ac6;
+  }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* Game hero */
+  .game-hero {
+    background: linear-gradient(135deg, #2b105e 0%, #5c2ac6 44%, #4616a8 100%);
+    color: white;
+    padding: 36px 28px;
+    border-radius: 12px;
+    margin: 20px 0 30px;
+    text-align: center;
+  }
+  .game-hero h2 { color: white; border: none; margin: 0; font-size: 32px; }
+  .game-hero .tagline { font-size: 17px; margin: 14px 0; color: rgba(255,255,255,0.85); }
+  .game-hero .play-btn {
+    display: inline-block;
+    background: #c3ff3d;
+    color: #1d2020;
+    padding: 16px 36px;
+    border-radius: 8px;
+    text-decoration: none;
+    font-weight: 900;
+    font-size: 18px;
+    margin-top: 8px;
+    border: 3px solid #1d2020;
+  }
+  .game-hero .specs {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 12px;
+    margin-top: 22px;
+  }
+  .game-hero .spec-cell { background: rgba(255,255,255,0.1); padding: 10px; border-radius: 6px; }
+  .game-hero .spec-cell .n { font-size: 28px; font-weight: 900; color: #c3ff3d; display: block; }
+  .game-hero .spec-cell .l { font-size: 12px; color: rgba(255,255,255,0.7); }
+
+  /* Callouts */
+  .callout { background: #c3ff3d; border: 3px solid #1d2020; border-radius: 8px; padding: 16px 22px; margin: 16px 0; }
+  .callout.warning { background: #fef3c7; border-color: #d97706; }
+  .callout.info { background: #dbeafe; border-color: #2563eb; }
+  .callout strong { font-size: 16px; }
+
+  /* Code */
+  code { background: #1d2020; color: #c3ff3d; padding: 2px 6px; border-radius: 3px; font-size: 14px; font-family: "Cascadia Mono", Consolas, monospace; }
+  pre { background: #1d2020; color: #c3ff3d; padding: 16px 20px; border-radius: 6px; overflow-x: auto; margin: 12px 0; font-size: 13px; line-height: 1.5; }
+  pre code { background: transparent; padding: 0; }
+
+  /* Tables */
+  table { width: 100%; border-collapse: collapse; margin: 16px 0; background: white; border-radius: 6px; overflow: hidden; }
+  th, td { padding: 10px 14px; border-bottom: 1px solid #ddd; text-align: left; vertical-align: top; font-size: 14px; }
+  th { background: #1d2020; color: white; font-weight: 700; }
+  tr:last-child td { border-bottom: none; }
+
+  /* Architecture diagram */
+  .arch-diagram { background: white; border: 2px solid #1d2020; border-radius: 8px; padding: 24px; margin: 16px 0; font-family: monospace; white-space: pre; overflow-x: auto; font-size: 13px; line-height: 1.6; }
+
+  /* Role grid */
+  .role-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; margin: 16px 0; }
+  .role-card {
+    background: white;
+    padding: 16px;
+    border-radius: 8px;
+    border-top: 4px solid #5c2ac6;
+    cursor: pointer;
+    transition: transform 0.1s, box-shadow 0.1s;
+  }
+  .role-card:hover { transform: translateY(-2px); box-shadow: 0 8px 16px rgba(0,0,0,0.1); }
+  .role-card .icon { font-size: 24px; }
+  .role-card .name { font-weight: 900; color: #5c2ac6; display: block; margin: 4px 0 2px; font-size: 15px; }
+  .role-card .title { font-size: 12px; color: #666; display: block; margin-bottom: 8px; }
+  .role-card .mission { font-size: 13px; color: #333; line-height: 1.5; }
+  .role-card .auth { font-size: 12px; color: #d97706; margin-top: 6px; font-weight: 700; }
+  .role-card.new { border-top-color: #dc2626; }
+  .role-card.new::after { content: "⭐ NEW HIRE"; font-size: 10px; background: #dc2626; color: white; padding: 2px 6px; border-radius: 3px; float: right; }
+  .role-card a.dl { display: inline-block; margin-top: 10px; font-size: 12px; color: #5c2ac6; text-decoration: none; font-weight: 700; }
+  .role-card a.dl:hover { text-decoration: underline; }
+
+  /* Department headers */
+  .dept-header {
+    background: #1d2020;
+    color: white;
+    padding: 10px 16px;
+    border-radius: 6px;
+    margin: 24px 0 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .dept-header h3 { margin: 0; border: none; padding: 0; color: white; font-size: 16px; }
+  .dept-header .count { font-size: 12px; opacity: 0.7; }
+
+  /* Technique boxes */
+  .technique { background: white; padding: 18px 22px; margin: 12px 0; border-radius: 6px; border-left: 5px solid #5c2ac6; }
+  .technique h3 { margin-top: 0; border-left: none; padding-left: 0; }
+  .technique .why { background: #fef3c7; padding: 10px 14px; border-radius: 4px; margin: 8px 0; font-size: 14px; }
+  .technique .how { background: #f0fdf4; padding: 10px 14px; border-radius: 4px; margin: 8px 0; font-size: 14px; }
+  .technique .example { background: #1d2020; color: #c3ff3d; padding: 10px 14px; border-radius: 4px; margin: 8px 0; font-family: monospace; font-size: 12px; line-height: 1.6; }
+
+  /* Pitfalls */
+  .pitfall { background: #fee2e2; border-left: 5px solid #dc2626; padding: 12px 18px; margin: 10px 0; border-radius: 4px; }
+  .pitfall strong { color: #dc2626; }
+
+  /* Timeline */
+  .timeline { border-left: 3px solid #5c2ac6; padding-left: 20px; margin: 16px 0; }
+  .timeline-item { margin: 16px 0; position: relative; }
+  .timeline-item::before { content: ''; position: absolute; left: -27px; top: 8px; width: 12px; height: 12px; background: #5c2ac6; border-radius: 50%; }
+  .timeline-item .when { font-weight: 900; color: #5c2ac6; font-size: 14px; }
+
+  /* CEO Memo */
+  .memo { background: #fef9e7; border: 1px solid #fde047; border-left: 6px solid #fde047; padding: 20px 24px; border-radius: 6px; margin: 16px 0; font-family: "Courier New", monospace; line-height: 1.8; font-size: 14px; }
+  .memo .from { color: #b45309; font-weight: 900; margin-bottom: 8px; }
+  .memo .quote { color: #5c2ac6; font-style: italic; font-size: 16px; border-left: 3px solid #5c2ac6; padding-left: 12px; margin: 12px 0; }
+
+  /* Sprint */
+  .sprint-week { background: white; border-radius: 6px; padding: 16px 20px; margin: 10px 0; border-top: 4px solid #5c2ac6; }
+  .sprint-week .week-num { font-weight: 900; font-size: 18px; color: #5c2ac6; }
+  .sprint-week .week-goal { font-size: 14px; color: #555; margin: 4px 0 8px; }
+
+  /* Template download */
+  .template-row {
+    display: grid;
+    grid-template-columns: 2fr 3fr auto;
+    gap: 12px;
+    align-items: center;
+    background: white;
+    padding: 12px 16px;
+    border-radius: 6px;
+    margin: 8px 0;
+    border-left: 4px solid #5c2ac6;
+  }
+  .template-row .path { font-family: monospace; font-size: 13px; color: #5c2ac6; word-break: break-all; }
+  .template-row .desc { font-size: 13px; color: #555; }
+  .template-row .dl-btn {
+    background: #c3ff3d;
+    color: #1d2020;
+    border: 2px solid #1d2020;
+    padding: 8px 14px;
+    border-radius: 4px;
+    text-decoration: none;
+    font-weight: 700;
+    font-size: 13px;
+    white-space: nowrap;
+  }
+  .template-row .dl-btn:hover { background: #1d2020; color: #c3ff3d; }
+
+  /* Game phase tracker */
+  .phase-row {
+    background: white;
+    padding: 14px 18px;
+    margin: 8px 0;
+    border-radius: 6px;
+    border-left: 5px solid #ddd;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 16px;
+    align-items: center;
+  }
+  .phase-row.done { border-left-color: #65a30d; background: #f0fdf4; }
+  .phase-row.doing { border-left-color: #f59e0b; background: #fffbeb; }
+  .phase-row.next { border-left-color: #5c2ac6; }
+  .phase-row .ph { font-weight: 900; font-size: 16px; min-width: 40px; }
+  .phase-row .ph-status { font-size: 13px; color: #666; white-space: nowrap; }
+
+  /* Modal for role prompt */
+  .modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.6); z-index: 100; justify-content: center; align-items: center; padding: 20px; }
+  .modal-bg.show { display: flex; }
+  .modal {
+    background: white;
+    border-radius: 12px;
+    padding: 28px;
+    max-width: 700px;
+    width: 100%;
+    max-height: 80vh;
+    overflow-y: auto;
+    position: relative;
+  }
+  .modal .close { position: absolute; top: 14px; right: 14px; background: #1d2020; color: white; border: none; width: 32px; height: 32px; border-radius: 50%; cursor: pointer; font-size: 18px; }
+  .modal h3 { margin-top: 0; border-left: 5px solid #5c2ac6; padding-left: 12px; }
+
+  footer { margin-top: 50px; padding-top: 24px; border-top: 2px solid #ddd; text-align: center; color: #888; font-size: 13px; }
+
+  @media (max-width: 760px) {
+    .game-hero .specs { grid-template-columns: repeat(2, 1fr); }
+    .template-row { grid-template-columns: 1fr; }
+    .phase-row { grid-template-columns: auto 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<h1>我如何用 <span class="em">Claude</span> 跑一個虛擬遊戲開發團隊，<br>並且開發 <span class="game">Roguelike 射擊網頁遊戲</span></h1>
+<p class="updated">作者：Terry @ 南瓜虛擬科技 · 案例：Gorilla Gun Survivor · 2026-05-29</p>
+
+<div class="lead">
+  這份文件講「<strong>我如何把 AI 當虛擬團隊用，從零做出一款可玩的瀏覽器 3D 射擊遊戲</strong>」。
+  上面分頁切換主題：教學方法、遊戲本身、31 位虛擬團隊、原始啟動文件、進度管理、4 週 sprint、可下載範本。
+</div>
+
+<!-- ====== TABS ====== -->
+<nav class="tabs" role="tablist">
+  <button class="tab-btn active" data-tab="t-method">📖 教學方法</button>
+  <button class="tab-btn" data-tab="t-game">🦍 猩猩槍 - 倖存者</button>
+  <button class="tab-btn" data-tab="t-team">👥 31 位虛擬團隊</button>
+  <button class="tab-btn" data-tab="t-launch">📋 原始啟動文件</button>
+  <button class="tab-btn" data-tab="t-dashboard">📊 進度 Dashboard</button>
+  <button class="tab-btn" data-tab="t-sprint">📅 4 週 Sprint</button>
+  <button class="tab-btn" data-tab="t-templates">📎 範本下載</button>
+</nav>
+
+<!-- ====== TAB 1: METHOD ====== -->
+<section class="tab-panel active" id="t-method">
+
+  <h2>痛點：AI 工具用了一段時間後...</h2>
+  <ul>
+    <li>每次新對話都要重新解釋整個專案背景，超累</li>
+    <li>AI 跨對話會「失憶」— 上次拍板的決策下次可能違反</li>
+    <li>一個 AI 同時當「策略 + 美術 + 程式 + QA」，沒人 review、容易失控</li>
+    <li>進度不透明 — 不知道 AI 真的做了什麼、什麼時候該插手</li>
+    <li>長時間離開後回來，AI 不知道之前做到哪</li>
+  </ul>
+
+  <div class="callout">
+    <strong>核心觀念</strong>：用<strong>檔案</strong>當所有 AI session 的共同記憶 + 把不同職責拆給不同「虛擬角色」 + 用 dashboard / mailbox / scheduled task 串成自動化團隊。
+  </div>
+
+  <h2>整套系統長什麼樣</h2>
+
+  <div class="arch-diagram">
+                    ┌─────────────┐
+                    │   Terry     │  ← 真實的人（產品老闆 / 決策者）
+                    │  (人類老闆)  │
+                    └──────┬──────┘
+                           │
+                ┌──────────┼──────────┐
+                ↓          ↓          ↓
+        ┌───────────┐ ┌────────┐ ┌──────────┐
+        │ Dashboard │ │ 信箱   │ │  索引    │
+        │  (HTML)   │ │ inbox/ │ │  (md)    │
+        └─────┬─────┘ └────┬───┘ └────┬─────┘
+              │            │          │
+              └────────────┴──────────┘
+                           │
+                ┌──────────┴──────────┐
+                ↓                     ↓
+     ┌──────────────────┐   ┌──────────────────┐
+     │  Claude (Cowork) │   │  Scheduled Task  │
+     │  互動式對話       │←──│  每 30 分自動    │
+     │  改檔案、改 code  │   │  喚醒 Claude     │
+     └────────┬─────────┘   └─────────┬────────┘
+              │                       │
+              └───────────┬───────────┘
+                          ↓
+              ┌───────────────────────┐
+              │   專案資料夾          │
+              │  ├─ openspec/   ← 31 位角色 prompt
+              │  ├─ src/        ← 遊戲程式碼
+              │  ├─ studio/     ← 製作中心
+              │  └─ qa/         ← 測試報告
+              └───────────────────────┘
+                          ↓
+                 ┌────────────────┐
+                 │  GitHub Pages  │  ← 自動部署
+                 └────────────────┘
+  </div>
+
+  <h2>9 個關鍵手法</h2>
+
+  <div class="technique">
+    <h3>① 檔案即記憶</h3>
+    <div class="why"><strong>為什麼</strong>：AI 對話結束後記憶會消失。資訊只存在某次對話 → 下次找不到。</div>
+    <div class="how"><strong>怎麼做</strong>：把所有決策、設定、進度、紀錄都寫成檔案。新 AI 開啟對話的第一件事就是讀檔。</div>
+  </div>
+
+  <div class="technique">
+    <h3>② 規格驅動（OpenSpec 哲學）</h3>
+    <div class="why"><strong>為什麼</strong>：以前的設定散在 5 個地方，改一個要追到頭破血流。</div>
+    <div class="how"><strong>怎麼做</strong>：一個東西一份檔。一把武器一份 .md、一隻怪物一份 .md、一張卡一份 .md、一位團隊成員一份 .md。</div>
+  </div>
+
+  <div class="technique">
+    <h3>③ 角色分工（虛擬團隊）</h3>
+    <div class="why"><strong>為什麼</strong>：一個 AI 同時當「老闆 + 美術 + 程式 + QA」沒人 review、容易瞎搞。</div>
+    <div class="how"><strong>怎麼做</strong>：每個角色寫一份 .md，內含：使命、職責、否決權、上司。AI 啟動時宣告自己是哪個角色。</div>
+  </div>
+
+  <div class="technique">
+    <h3>④ 排程喚醒（Scheduled Task）</h3>
+    <div class="why"><strong>為什麼</strong>：Terry 不可能 24 小時在電腦前。AI 需要在他離場時自己推進。</div>
+    <div class="how"><strong>怎麼做</strong>：用 Claude Cowork 的 scheduled task 每 30 分鐘喚醒新 Claude。新 Claude 讀循環指令檔，知道現在該做什麼。</div>
+  </div>
+
+  <div class="technique">
+    <h3>⑤ 信箱通訊（mailbox）</h3>
+    <div class="how"><strong>怎麼做</strong>：建 inbox / outbox / broadcast 三個資料夾，正式管道發問與決策。</div>
+  </div>
+
+  <div class="technique">
+    <h3>⑥ Dashboard 視覺化</h3>
+    <div class="how"><strong>怎麼做</strong>：寫一個 HTML 檔（用瀏覽器開），用白話 + 視覺方式呈現現況。看「📊 進度 Dashboard」分頁。</div>
+  </div>
+
+  <div class="technique">
+    <h3>⑦ 停車規則（Stop Rules）</h3>
+    <div class="how"><strong>怎麼做</strong>：循環指令檔列出 stop conditions，每次喚醒先檢查。避免 AI 自動跑沒人看會出事。</div>
+  </div>
+
+  <div class="technique">
+    <h3>⑧ 降載模式（Degraded Mode）</h3>
+    <div class="how"><strong>怎麼做</strong>：定義「卡住時可做的純文件工作清單」。AI 卡住時自動挑一項做，不會傻等。</div>
+  </div>
+
+  <div class="technique">
+    <h3>⑨ 驗證分流（Sandbox vs Production）</h3>
+    <div class="how"><strong>怎麼做</strong>：明確區分「AI 沙盒能做什麼」vs「老闆 Windows 端必須驗什麼」。</div>
+  </div>
+
+  <h2>完整流程示意</h2>
+  <div class="timeline">
+    <div class="timeline-item"><div class="when">第 1 天：用 ChatGPT / Codex 起底</div><p>釐清專案輪廓、技術棧、團隊編制構想、產出啟動文件。</p></div>
+    <div class="timeline-item"><div class="when">第 2 天：建檔案結構</div><p>建 <code>openspec/</code>、寫 <code>project.md</code> 紅線、<code>AGENTS.md</code> workflow。</p></div>
+    <div class="timeline-item"><div class="when">第 3 天：寫所有實體 spec</div><p>武器、怪物、卡、元素、系統各寫一份 .md。</p></div>
+    <div class="timeline-item"><div class="when">第 4 天：寫團隊角色</div><p>每位虛擬團隊成員寫一份 prompt 檔。</p></div>
+    <div class="timeline-item"><div class="when">第 5 天：建 mailbox + dashboard</div><p>建信箱結構 + 寫 dashboard HTML。</p></div>
+    <div class="timeline-item"><div class="when">第 6 天：設定 scheduled task</div><p>寫循環指令檔 + 在 Cowork 設 scheduled task 每 30 分喚醒。</p></div>
+    <div class="timeline-item"><div class="when">第 7 天+：自動運作</div><p>老闆每天看 dashboard 5 分鐘、檢查 inbox、回 outbox 決策。其他時間 AI 自己跑。</p></div>
+  </div>
+
+  <h2>常見陷阱與解法</h2>
+  <div class="pitfall"><strong>陷阱 1：寫太多 AI 看的 spec，老闆看不懂</strong><p>解法：規格給 AI、dashboard 給老闆。dashboard 一律白話、不引用 spec 術語。</p></div>
+  <div class="pitfall"><strong>陷阱 2：AI 開始亂發明角色</strong><p>解法：角色清單寫死在 project.md，新增需老闆簽字。</p></div>
+  <div class="pitfall"><strong>陷阱 3：Scheduled task 跑太久、老闆失控</strong><p>解法：每個任務內建「做完 N 個 slice 就停」+「STOP.txt 緊急停車」。</p></div>
+  <div class="pitfall"><strong>陷阱 4：AI 假裝 sandbox 驗證可信</strong><p>解法：明文寫進 loop.md：「sandbox 驗證不算數，必須老闆在 Windows 上跑」。</p></div>
+  <div class="pitfall"><strong>陷阱 5：100+ 份檔，找不到</strong><p>解法：建一份「總索引」(<code>studio/索引.md</code>) 列出所有資料夾用途。</p></div>
+  <div class="pitfall"><strong>陷阱 6：mount filesystem 對 git 不友善</strong><p>解法：政策禁沙盒碰 git，只動檔案；老闆 Windows 端負責所有 git 操作。</p></div>
+
+  <h2>適合 / 不適合用這套</h2>
+  <h3>✅ 適合</h3>
+  <ul>
+    <li><strong>長期專案</strong>（≥ 1 個月）— 投資建系統有回報</li>
+    <li><strong>多面向工作</strong>（程式 + 美術 + 行銷 + QA）— 角色分工才有意義</li>
+    <li><strong>老闆時間零碎</strong>（每天 30 分到 1 小時）— 自動化省時最有感</li>
+    <li><strong>需要可追溯</strong>（投資人 / 團隊要看進度）</li>
+  </ul>
+  <h3>❌ 不適合</h3>
+  <ul>
+    <li><strong>短期一次性任務</strong>— 直接用 ChatGPT 就好</li>
+    <li><strong>純創意發想</strong>— spec 框架會限制創意</li>
+    <li><strong>1-2 人小組緊密合作</strong>— 直接 face-to-face 比寫文件快</li>
+  </ul>
+
+  <h2>⚠️ 老實話：教學 vs 真實</h2>
+  <table>
+    <tr><th style="width:30%">事項</th><th>真實情況</th></tr>
+    <tr><td><strong>31 位角色 prompt</strong></td><td>✅ <strong>全部都是真實 prompt 檔</strong>，不是空殼。詳見「👥 31 位虛擬團隊」分頁。</td></tr>
+    <tr><td><strong>「7 天」流程</strong></td><td>本案 1-2 天壓縮做完（AI 高速）。「7 天」是給真人團隊套用的建議節奏。</td></tr>
+    <tr><td><strong>scheduled task</strong></td><td>是 Cowork 桌面應用排程，需要 app 開著才會觸發。不是真正 24 小時 server。</td></tr>
+    <tr><td><strong>100+ 份 spec</strong></td><td>確實有 100+ 份。約 60 份是 reverse-engineer 自既有 code（先 code 後 spec）。</td></tr>
+    <tr><td><strong>遊戲完成度</strong></td><td>35-40% prototype。核心循環能跑、有 8 武器 + 11 怪 + 15 卡，但缺平衡測試、缺真實音效、缺最終美術。</td></tr>
+  </table>
+
+</section>
+
+<!-- ====== TAB 2: GAME ====== -->
+<section class="tab-panel" id="t-game">
+
+  <div class="game-hero">
+    <h2>🦍 猩猩槍 - 倖存者</h2>
+    <p class="tagline">3D 第一人稱大猩猩視角 · Roguelike Survivor · 瀏覽器直接玩</p>
+    <a href="https://terry12260201.github.io/gorilla-gun-survivor/" target="_blank" class="play-btn">→ 點我立即遊玩</a>
+    <div class="specs">
+      <div class="spec-cell"><span class="n">8</span><span class="l">武器</span></div>
+      <div class="spec-cell"><span class="n">11</span><span class="l">怪物</span></div>
+      <div class="spec-cell"><span class="n">4×3</span><span class="l">元素附魔</span></div>
+      <div class="spec-cell"><span class="n">35-40%</span><span class="l">完成度</span></div>
+    </div>
+  </div>
+
+  <div class="callout info">
+    <strong>📌 重要：這份 HTML 不只是教學，也是「開發紀錄主檔」</strong>
+    <p style="margin-top:8px;font-size:14px;">
+      每次我（Terry）跟 Claude 推進遊戲到一個里程碑，<strong>都會把那個階段的決策、新增功能、團隊變動、設計選擇</strong>記錄到這份 HTML 裡。
+      讀者可以追到「2026-05-19 為什麼選擇了 OpenSpec 哲學」「2026-05-20 為什麼移動加速要加上限」「2026-05-29 VFX-01 怎麼通過測試」這些歷史節點。
+      <strong>所以這份 HTML 是專案的「活的歷史」</strong>，不是寫完就停的靜態文件。
+    </p>
+  </div>
+
+  <h2>遊戲定位</h2>
+  <p>3D 第一人稱大猩猩貼地視角（1.1m 視角）的 <strong>roguelike survivor</strong>（吸血鬼倖存者類型）。Web 平台，目標 Steam + itch.io 上架 $15。</p>
+
+  <h2>核心玩法循環</h2>
+  <div class="callout">
+    <strong>殺 → 撿 → 升 → 抽 → 撐</strong>
+    <p style="margin-top:8px;font-size:14px;">
+      <strong>殺</strong>怪 → <strong>撿</strong>經驗/血/寶箱 → <strong>升</strong>等 → 三選一<strong>抽</strong>卡 → 越<strong>撐</strong>越強
+    </p>
+  </div>
+
+  <h2>怎麼玩（30 秒上手）</h2>
+  <ul>
+    <li><strong>WASD</strong> 移動</li>
+    <li><strong>滑鼠</strong> 瞄準</li>
+    <li><strong>左鍵</strong> 主武器射擊（副武器自動射擊）</li>
+    <li>撿 XP 球升等 → 從 3 張卡選 1 → 越來越強</li>
+    <li>撐越久越好；120 秒會出 miniboss</li>
+  </ul>
+
+  <h2>已實作內容</h2>
+
+  <h3>🔫 8 把副武器（自動射擊）</h3>
+  <table>
+    <tr><th>武器</th><th>特性</th><th>定位</th></tr>
+    <tr><td>雙管副槍</td><td>中速中傷</td><td>均衡 baseline</td></tr>
+    <tr><td>緊緻手槍</td><td>高射速低傷</td><td>持續輸出</td></tr>
+    <tr><td>重型手砲</td><td>高傷低射速</td><td>Alpha Strike</td></tr>
+    <tr><td>連發衝鋒</td><td>極快射速短程</td><td>近戰高 DPS</td></tr>
+    <tr><td>長筒狙擊</td><td>極高傷極遠程</td><td>Sniper</td></tr>
+    <tr><td>火焰噴射器</td><td>近距離 AoE</td><td>群戰 + Fire 元素</td></tr>
+    <tr><td>爆裂弩砲</td><td>高傷 + AoE</td><td>重型 Burst</td></tr>
+    <tr><td><strong>電弧短杖</strong></td><td>內建電弧鏈電</td><td>Lightning build 核心</td></tr>
+  </table>
+
+  <h3>👾 11 種敵人（依時間解鎖）</h3>
+  <table>
+    <tr><th>敵人</th><th>解鎖時間</th><th>特性</th></tr>
+    <tr><td>Grunt 雜兵</td><td>0s</td><td>基礎沙包</td></tr>
+    <tr><td>Fast 高速</td><td>15s</td><td>速度高於玩家</td></tr>
+    <tr><td>Scout 偵察</td><td>30s</td><td>中速中血</td></tr>
+    <tr><td>Rusher 衝刺</td><td>25s</td><td>偵測到玩家就衝刺</td></tr>
+    <tr><td>Ranged 遠程</td><td>35s</td><td>保持距離射擊</td></tr>
+    <tr><td>Bomber 自爆 v1</td><td>45s</td><td>進入 3m 內倒數自爆</td></tr>
+    <tr><td>Heavy 重裝</td><td>50s</td><td>130 HP 沙包</td></tr>
+    <tr><td>Caster 法師</td><td>55s</td><td>遠程，高傷橘色彈</td></tr>
+    <tr><td>Brute 巨獸</td><td>80s</td><td>200 HP 次最強</td></tr>
+    <tr><td>Plasma Bomber v2</td><td>90s</td><td>強化自爆，引信僅 1.0s</td></tr>
+    <tr><td><strong>Miniboss</strong></td><td>120s</td><td>900 HP 里程碑 boss</td></tr>
+  </table>
+
+  <h3>⚡ 4 種元素附魔 × 3 階</h3>
+  <table>
+    <tr><th>元素</th><th>機制</th></tr>
+    <tr><td>🔥 Fire 灼傷</td><td>命中後持續燃燒掉血（DOT）</td></tr>
+    <tr><td>❄️ Ice 冰凍</td><td>命中後敵人減速 40/55/75%</td></tr>
+    <tr><td>☠️ Poison 毒霧</td><td>命中處生成毒雲，範圍 DOT</td></tr>
+    <tr><td>⚡ Lightning 雷擊</td><td>命中後跳鏈電 2/3/5 隻</td></tr>
+  </table>
+
+  <h3>🃏 15 張升級卡 + 動態卡</h3>
+  <p>9 張 common（傷害/射速/移速/HP/子彈速/回血/雙連發/巨彈/磁石），6 張 rare（追擊/追擊強化/彈跳彈/雷霆 I/II/閃電鞭），加上動態產生的「武器卡」「元素附魔卡」。</p>
+
+  <h3>🗺️ 4 張地圖（1 既有 + 3 提案）</h3>
+  <ul>
+    <li><strong>Arena</strong>（既有）— 圓形戰場 + 散落柱體</li>
+    <li><strong>Ruins</strong>（提案）— 叢林石廟廢墟 + 2 樓層 + 地下密室</li>
+    <li><strong>Caverns</strong>（提案）— 地下螢光洞窟 + 3 層立體</li>
+    <li><strong>Neon</strong>（提案）— 廢棄霓虹科技殖民站</li>
+  </ul>
+
+  <h2>📊 目前開發階段（活的紀錄）</h2>
+  <div class="phase-row done"><span class="ph">P0</span><span>基礎建設（部署、log、dashboard）</span><span class="ph-status">✅ 完成</span></div>
+  <div class="phase-row done"><span class="ph">P1</span><span>資料化（武器/卡/敵人搬進 JSON + spec）</span><span class="ph-status">✅ 完成</span></div>
+  <div class="phase-row doing"><span class="ph">P2</span><span>內容擴張（新武器、新怪、新地圖）</span><span class="ph-status">⏳ 進行中</span></div>
+  <div class="phase-row next"><span class="ph">P3</span><span>平衡測試（5/10/15 分鐘玩測校正）</span><span class="ph-status">⏳ 排程中</span></div>
+  <div class="phase-row next"><span class="ph">P4</span><span>美術強化（概念圖 → 3D 模型 → 整合）</span><span class="ph-status">⏳ 排程中</span></div>
+  <div class="phase-row next"><span class="ph">P5</span><span>上架準備（Steam 頁面、trailer）</span><span class="ph-status">⏳ 規劃中</span></div>
+
+  <h2>近期里程碑紀錄</h2>
+  <div class="timeline">
+    <div class="timeline-item"><div class="when">2026-05-13</div><p>專案從 VR 母遊戲移植到 Web 版開始。launch brief 啟動文件產出。</p></div>
+    <div class="timeline-item"><div class="when">2026-05-18</div><p>核心 prototype 完成。武器、怪物、卡、元素、Meta 升級全部可玩。Codex 桌面 app 停擺。</p></div>
+    <div class="timeline-item"><div class="when">2026-05-19</div><p>導入 OpenSpec 哲學。建 100+ 份 spec 檔。31 位虛擬團隊 prompt 寫完。修第 1 個玩法 bug：閃電武器爆雷（PERF-02）。</p></div>
+    <div class="timeline-item"><div class="when">2026-05-20</div><p>修第 2-4 個 bug：滿血不出回血、沒抽追擊不出追擊強化、移動加速第 6 次過濾。第 5 個（OPEN-3 散射文件化）也完成。</p></div>
+    <div class="timeline-item"><div class="when">2026-05-29</div><p>VFX-01（電弧短杖視覺）通過沙盒型別驗證 + build。等 Terry runtime 玩測。</p></div>
+  </div>
+
+</section>
+
+<!-- ====== TAB 3: 31 位虛擬團隊 ====== -->
+<section class="tab-panel" id="t-team">
+
+  <h2>31 位虛擬團隊（點任一張卡看完整 prompt）</h2>
+
+  <div class="callout info">
+    <strong>📌 全部 31 位都是真實的 prompt 檔</strong>，不是空殼。每張卡片可以點選看角色摘要與點選下載完整 prompt（連到 GitHub repo）。
+  </div>
+
+  <div class="dept-header"><h3>🎃 C-Suite · 最終拍板層</h3><span class="count">4 位</span></div>
+  <div class="role-grid">
+    <div class="role-card" onclick="showRole('ceo')"><span class="icon">🎃</span><span class="name">Pumpkin King</span><span class="title">CEO · 統籌全局</span><span class="mission">守住 roguelike survivor 核心紀律，把 GGS 從 35% prototype 推到 $15 ship-ready</span><span class="auth">🛑 否決任何違反核心循環的提案</span><a href="../openspec/roles/c-suite/ceo-pumpkin-king.md" class="dl" download onclick="event.stopPropagation()">↓ 下載完整 prompt</a></div>
+    <div class="role-card" onclick="showRole('cao')"><span class="icon">🎨</span><span class="name">Raven</span><span class="title">CAO · 美術總監</span><span class="mission">所有 art 產出（concept / 3D / VFX / UI / 行銷素材）必須通過簽字</span><span class="auth">🛑 否決所有美術產出</span><a href="../openspec/roles/c-suite/cao-raven.md" class="dl" download onclick="event.stopPropagation()">↓ 下載完整 prompt</a></div>
+    <div class="role-card" onclick="showRole('cto')"><span class="icon">⚙️</span><span class="name">Circuit</span><span class="title">CTO · 技術總監</span><span class="mission">守 Three.js + Vite + TS 純手刻架構不腐爛，仲裁所有跨模組程式爭議</span><span class="auth">🛑 否決架構決策 + 新依賴</span><a href="../openspec/roles/c-suite/cto-circuit.md" class="dl" download onclick="event.stopPropagation()">↓ 下載完整 prompt</a></div>
+    <div class="role-card" onclick="showRole('cmo')"><span class="icon">📢</span><span class="name">Harvest</span><span class="title">CMO · 行銷總監</span><span class="mission">帶 GGS 從 GitHub Pages prototype 走向 Steam + itch.io 雙軌上架</span><span class="auth">🛑 Steam 頁面策略簽字</span><a href="../openspec/roles/c-suite/cmo-harvest.md" class="dl" download onclick="event.stopPropagation()">↓ 下載完整 prompt</a></div>
+  </div>
+
+  <div class="dept-header"><h3>🎮 企劃部</h3><span class="count">5 位（含 1 NEW）</span></div>
+  <div class="role-grid">
+    <div class="role-card" onclick="showRole('systems')"><span class="icon">📐</span><span class="name">Systems Designer</span><span class="title">Game Loop 設計</span><span class="mission">核心遊戲循環的設計者，守住「殺撿升抽撐」5 步順序</span><a href="../openspec/roles/design/systems-designer.md" class="dl" download onclick="event.stopPropagation()">↓ 下載 prompt</a></div>
+    <div class="role-card" onclick="showRole('balance')"><span class="icon">📊</span><span class="name">Balance Architect</span><span class="title">數值平衡</span><span class="mission">所有數值的看守者 — HP / damage / speed / drop rate / XP curve</span><a href="../openspec/roles/design/balance-architect.md" class="dl" download onclick="event.stopPropagation()">↓ 下載 prompt</a></div>
+    <div class="role-card" onclick="showRole('combat')"><span class="icon">🎯</span><span class="name">Combat Designer</span><span class="title">打擊感專家</span><span class="mission">讓 GGS 的「殺」這一步爽到尖叫。武器手感、命中回饋、敵人 AI 行為</span><a href="../openspec/roles/design/combat-designer.md" class="dl" download onclick="event.stopPropagation()">↓ 下載 prompt</a></div>
+    <div class="role-card" onclick="showRole('narrative')"><span class="icon">📖</span><span class="name">Narrative Designer</span><span class="title">敘事 / 世界觀</span><span class="mission">為「為什麼是大猩猩？」找答案。建立 GGS 世界觀</span><a href="../openspec/roles/design/narrative-designer.md" class="dl" download onclick="event.stopPropagation()">↓ 下載 prompt</a></div>
+    <div class="role-card new" onclick="showRole('cartograph')"><span class="icon">🗺️</span><span class="name">Cartograph</span><span class="title">地圖設計師</span><span class="mission">在不破壞 roguelike 核心的前提下，為地圖注入探索感。30 秒週長鐵律</span><span class="auth">🛑 地圖永遠不能無限大</span><a href="../openspec/roles/design/cartograph.md" class="dl" download onclick="event.stopPropagation()">↓ 下載 prompt</a></div>
+  </div>
+
+  <div class="dept-header"><h3>🎨 美術部</h3><span class="count">6 位</span></div>
+  <div class="role-grid">
+    <div class="role-card" onclick="showRole('concept')"><span class="icon">✏️</span><span class="name">Concept Artist</span><span class="title">原畫師</span><span class="mission">所有 3D 模型製作前的概念圖第一棒。產出 GPT Image 2 prompt</span><a href="../openspec/roles/art/concept-artist.md" class="dl" download onclick="event.stopPropagation()">↓ 下載 prompt</a></div>
+    <div class="role-card" onclick="showRole('3d')"><span class="icon">🧊</span><span class="name">3D Specialist</span><span class="title">3D 建模師</span><span class="mission">把 Concept Artist 的 reference 變成可在 Three.js 跑的 GLB。低模 + 低 draw call</span><a href="../openspec/roles/art/3d-specialist.md" class="dl" download onclick="event.stopPropagation()">↓ 下載 prompt</a></div>
+    <div class="role-card" onclick="showRole('anim')"><span class="icon">🏃</span><span class="name">Animation Director</span><span class="title">動畫師</span><span class="mission">讓敵人「活起來」— idle / walk / attack / death 動畫狀態機</span><a href="../openspec/roles/art/animation-director.md" class="dl" download onclick="event.stopPropagation()">↓ 下載 prompt</a></div>
+    <div class="role-card" onclick="showRole('vfx')"><span class="icon">✨</span><span class="name">VFX Artist</span><span class="title">特效藝術家</span><span class="mission">所有命中、爆炸、發光的視覺設計者。粒子總預算 ≤ 200</span><a href="../openspec/roles/art/vfx-artist.md" class="dl" download onclick="event.stopPropagation()">↓ 下載 prompt</a></div>
+    <div class="role-card" onclick="showRole('ui')"><span class="icon">🖼️</span><span class="name">UI/UX Designer</span><span class="title">介面設計師</span><span class="mission">HUD、主選單、升等選卡、暫停、結算介面</span><a href="../openspec/roles/art/ui-ux-designer.md" class="dl" download onclick="event.stopPropagation()">↓ 下載 prompt</a></div>
+    <div class="role-card" onclick="showRole('env')"><span class="icon">🌍</span><span class="name">Environment Artist</span><span class="title">場景美術</span><span class="mission">地圖視覺風格 — 叢林廢墟、實驗室、地下祭壇、霓虹都市</span><a href="../openspec/roles/art/environment-artist.md" class="dl" download onclick="event.stopPropagation()">↓ 下載 prompt</a></div>
+  </div>
+
+  <div class="dept-header"><h3>⚙️ 程式部</h3><span class="count">5 位（含 1 NEW）</span></div>
+  <div class="role-grid">
+    <div class="role-card" onclick="showRole('lead')"><span class="icon">💻</span><span class="name">Lead Programmer</span><span class="title">主程 · 系統整合</span><span class="mission">整體架構守護者。整合所有 module，確保程式結構保持手刻 Three.js 應有的乾淨</span><a href="../openspec/roles/programming/lead-programmer.md" class="dl" download onclick="event.stopPropagation()">↓ 下載 prompt</a></div>
+    <div class="role-card" onclick="showRole('gameplay')"><span class="icon">🎮</span><span class="name">Gameplay Programmer</span><span class="title">玩法程式</span><span class="mission">把 Systems Designer + Combat Designer 的設計變成可運行的 code</span><a href="../openspec/roles/programming/gameplay-programmer.md" class="dl" download onclick="event.stopPropagation()">↓ 下載 prompt</a></div>
+    <div class="role-card" onclick="showRole('web')"><span class="icon">🌐</span><span class="name">Web Frontend</span><span class="title">Three.js / WebGL</span><span class="mission">所有渲染、shader、Three.js API 細節由他主導</span><a href="../openspec/roles/programming/web-frontend-engineer.md" class="dl" download onclick="event.stopPropagation()">↓ 下載 prompt</a></div>
+    <div class="role-card" onclick="showRole('tools')"><span class="icon">🔧</span><span class="name">Tools Programmer</span><span class="title">工具程式</span><span class="mission">Build pipeline、validator、自動化腳本守門員</span><a href="../openspec/roles/programming/tools-programmer.md" class="dl" download onclick="event.stopPropagation()">↓ 下載 prompt</a></div>
+    <div class="role-card new" onclick="showRole('volt')"><span class="icon">⚡</span><span class="name">Volt</span><span class="title">TA · 效能優化</span><span class="mission">讓玩家在第 5 分鐘和第 15 分鐘的 FPS 沒有差異。所有 PR 必須他簽字</span><span class="auth">🛑 否決所有 PR · 粒子預算 ≤ 200</span><a href="../openspec/roles/programming/volt-ta.md" class="dl" download onclick="event.stopPropagation()">↓ 下載 prompt</a></div>
+  </div>
+
+  <div class="dept-header"><h3>🎵 音效部</h3><span class="count">3 位</span></div>
+  <div class="role-grid">
+    <div class="role-card" onclick="showRole('audio-dir')"><span class="icon">🎼</span><span class="name">Audio Director</span><span class="title">音效總監</span><span class="mission">GGS 聲音整體願景。從 WebAudio 合成升級為真實音檔的路線規劃</span><a href="../openspec/roles/audio/audio-director.md" class="dl" download onclick="event.stopPropagation()">↓ 下載 prompt</a></div>
+    <div class="role-card" onclick="showRole('music')"><span class="icon">🎶</span><span class="name">Music Composer</span><span class="title">音樂作曲</span><span class="mission">寫主題曲、戰鬥 BGM、boss 音樂、菜單音樂。叢林廢墟風</span><a href="../openspec/roles/audio/music-composer.md" class="dl" download onclick="event.stopPropagation()">↓ 下載 prompt</a></div>
+    <div class="role-card" onclick="showRole('sfx')"><span class="icon">💥</span><span class="name">SFX Designer</span><span class="title">音效設計</span><span class="mission">寫所有 one-shot SFX — 武器射擊、命中、爆炸、升等、撿物</span><a href="../openspec/roles/audio/sfx-designer.md" class="dl" download onclick="event.stopPropagation()">↓ 下載 prompt</a></div>
+  </div>
+
+  <div class="dept-header"><h3>📢 行銷部</h3><span class="count">5 位（含 1 NEW）</span></div>
+  <div class="role-grid">
+    <div class="role-card" onclick="showRole('copy')"><span class="icon">✍️</span><span class="name">Copywriter</span><span class="title">文案企劃</span><span class="mission">Steam 頁面、社群貼文、武器名/敘述、achievement、trailer 旁白</span><a href="../openspec/roles/marketing/copywriter.md" class="dl" download onclick="event.stopPropagation()">↓ 下載 prompt</a></div>
+    <div class="role-card" onclick="showRole('trailer')"><span class="icon">🎬</span><span class="name">Trailer Director</span><span class="title">影片導演</span><span class="mission">30/60/90 秒 trailer 三版的導演。「最爽 5 秒」串成 hook</span><a href="../openspec/roles/marketing/trailer-director.md" class="dl" download onclick="event.stopPropagation()">↓ 下載 prompt</a></div>
+    <div class="role-card" onclick="showRole('market')"><span class="icon">📊</span><span class="name">Market Analyst</span><span class="title">市場分析</span><span class="mission">$15 定價可行性、Steam 同類遊戲分析、社群熱度監控</span><a href="../openspec/roles/marketing/market-analyst.md" class="dl" download onclick="event.stopPropagation()">↓ 下載 prompt</a></div>
+    <div class="role-card" onclick="showRole('community')"><span class="icon">💬</span><span class="name">Community Manager</span><span class="title">社群經理</span><span class="mission">管理對外社群（Reddit / X / Discord / itch.io 留言）</span><a href="../openspec/roles/marketing/community-manager.md" class="dl" download onclick="event.stopPropagation()">↓ 下載 prompt</a></div>
+    <div class="role-card new" onclick="showRole('scarlet')"><span class="icon">🎨</span><span class="name">Scarlet</span><span class="title">行銷美術</span><span class="mission">跟隨遊戲內容演進自動產出宣傳圖。新武器/怪物/地圖上線就要產素材</span><a href="../openspec/roles/marketing/scarlet.md" class="dl" download onclick="event.stopPropagation()">↓ 下載 prompt</a></div>
+  </div>
+
+  <div class="dept-header"><h3>🔬 QA 部</h3><span class="count">3 位</span></div>
+  <div class="role-grid">
+    <div class="role-card" onclick="showRole('qa')"><span class="icon">🎯</span><span class="name">QA Analyst</span><span class="title">主測員</span><span class="mission">第一個玩每個新 build、最後簽字才能 ship。設計測試清單、跑 Checkpoint 玩測</span><a href="../openspec/roles/qa/qa-analyst.md" class="dl" download onclick="event.stopPropagation()">↓ 下載 prompt</a></div>
+    <div class="role-card" onclick="showRole('data')"><span class="icon">📈</span><span class="name">Data Scientist</span><span class="title">數據科學家</span><span class="mission">玩家行為數據分析。死在哪、用什麼武器、選什麼卡、活多久</span><a href="../openspec/roles/qa/data-scientist.md" class="dl" download onclick="event.stopPropagation()">↓ 下載 prompt</a></div>
+    <div class="role-card" onclick="showRole('ux')"><span class="icon">♿</span><span class="name">UX Tester</span><span class="title">體驗測試</span><span class="mission">色盲、聽障、單手玩家、新手 — 是否還能玩懂、玩得爽</span><a href="../openspec/roles/qa/ux-tester.md" class="dl" download onclick="event.stopPropagation()">↓ 下載 prompt</a></div>
+  </div>
+
+</section>
+
+<!-- ====== TAB 4: 原始啟動文件 ====== -->
+<section class="tab-panel" id="t-launch">
+
+  <h2>📋 原始啟動文件（CEO 發給全團隊的 Day 0 Onboarding）</h2>
+
+  <p>下面是專案啟動時，CEO Pumpkin King 親自發給全 28 人團隊的「啟動備忘錄」原文節錄。包含開場、現況情報、3 位新人入職、地圖設計鐵律、完整編制名單。</p>
+
+  <h3>⚠ PRIORITY ALPHA · DAY 0 ONBOARDING</h3>
+
+  <div class="memo">
+    <div class="from">ISSUED BY CEO · PUMPKIN KING · 南瓜虛擬科技</div>
+
+    <p>各位團隊，<strong style="color:#fde047;">南瓜虛擬科技</strong> 正式接下這個專案。我們不是從零開始 — 客戶（Terry）已經做出可玩的原型，<strong style="color:#fde047;">有 7 把武器、10 種怪物、18 張升級卡、4 種元素附魔系統、4 條 Meta 永久升級</strong>，技術棧確定是 Vite + TypeScript + Three.js 純手刻。這是一份**有底子的專案**，不是空中樓閣 — 我們要做的是**把它從 prototype 推到 $15 可賣的成品**。</p>
+
+    <div class="quote">「殺怪、撿經驗、升等、抽卡、組合越來越歪 — 這個爽感已經存在了，<br>我們的任務是讓它在第二、第三、第十次都還是爽。」</div>
+
+    <p><strong style="color:#b45309;">客戶提出的關鍵盲區</strong>，已接收並核准：</p>
+    <ul style="margin-top:8px;">
+      <li>(1) <strong>技術美術 TA</strong> 加入優化團隊 — 玩到後面會頓，這是 web 3D 的死穴</li>
+      <li>(2) <strong>地圖設計師</strong> 加入 — 加入探索感、樓層、秘密路徑，但守住 roguelike 核心</li>
+      <li>(3) <strong>行銷美術</strong> 加入 — 跟隨內容更新自動產出宣傳圖，質感由 CAO Raven 統一把關</li>
+    </ul>
+
+    <p style="margin-top:12px;"><strong style="color:#b45309;">核心紀律</strong>：這是 <strong>roguelike survivor</strong>，不是探險解謎、不是開放世界、不是 metroidvania。地圖再有趣，<strong>玩家的主軸永遠是「殺、撿、升、抽、撐」</strong>。任何改動偏離這條軸線，CEO 直接否決。</p>
+  </div>
+
+  <h3>📊 現況情報（PROJECT INTEL）</h3>
+  <table>
+    <tr><th>項目</th><th>數量</th><th>備註</th></tr>
+    <tr><td>副武器</td><td>7 → 8</td><td>加上電弧短杖</td></tr>
+    <tr><td>怪物種類</td><td>10 → 11</td><td>加上 plasma_bomber_v2</td></tr>
+    <tr><td>升級卡</td><td>18</td><td>9 common + 6 rare + 8 武器 + 動態元素卡</td></tr>
+    <tr><td>元素附魔</td><td>4 × 3 階</td><td>fire / ice / poison / lightning</td></tr>
+    <tr><td>META 升級條</td><td>4</td><td>HP / 火力 / 磁場 / 第二次機會（提案中）</td></tr>
+    <tr><td>MINIBOSS 觸發</td><td>120 秒</td><td>每 run 第一個里程碑</td></tr>
+    <tr><td>大猩猩視角高</td><td>1.1 m</td><td>世界觀核心識別</td></tr>
+    <tr><td>音檔</td><td>0</td><td>目前全 WebAudio 合成</td></tr>
+  </table>
+
+  <h3>⭐ 本週新人入職（NEW HIRES · DAY 1）</h3>
+
+  <div class="role-grid">
+    <div class="role-card new"><span class="icon">⚡</span><span class="name">VOLT</span><span class="title">Technical Artist (TA) · 效能優化專家</span><span class="mission"><strong>使命：</strong>讓玩家在第 5 分鐘和第 15 分鐘的幀數沒有差異。Three.js 沒有官方優化工具，所有性能問題都得手動拆解。Volt 是團隊的「煞車器」，程式部門寫出來的功能要過他這關才能 merge。</span><span class="auth">🛑 否決權：所有 PR 必須他簽字</span></div>
+    <div class="role-card new"><span class="icon">🗺️</span><span class="name">CARTOGRAPH</span><span class="title">Map / Level Designer</span><span class="mission"><strong>使命：</strong>在不破壞 roguelike 核心的前提下，為地圖注入探索感。上下樓層、秘密洞窟、隱藏路徑 — 但地圖永遠不能無限大，永遠服務於「殺、撿、升、抽、撐」的主軸。</span><span class="auth">🛑 三方協商：CAO / CTO / Systems Designer 簽字</span></div>
+    <div class="role-card new"><span class="icon">🎨</span><span class="name">SCARLET</span><span class="title">Marketing Artist</span><span class="mission"><strong>使命：</strong>跟隨遊戲內容演進，自動產出宣傳圖。新武器、新怪物、新地圖一上線，Scarlet 就要產出對應的行銷素材，存到 marketing/promo/，質感由 CAO Raven 把關。</span><span class="auth">🛑 美術審查：CAO Raven 否決權</span></div>
+  </div>
+
+  <h3>🗺️ 地圖設計鐵律（MAP DESIGN COMMANDMENTS）</h3>
+  <table>
+    <tr><th>#</th><th>鐵律</th><th>說明</th></tr>
+    <tr><td>01</td><td>30 秒週長原則</td><td>玩家全速跑一圈不超過 30 秒。地圖是戰場，不是迷宮。</td></tr>
+    <tr><td>02</td><td>三層垂直性</td><td>主層 (1F) + 高地 (2F) + 地下秘室。每層有戰術價值。</td></tr>
+    <tr><td>03</td><td>秘密路徑 = 風險/報酬</td><td>進秘密區要冒風險：破壞牆、開鎖、限時衝。</td></tr>
+    <tr><td>04</td><td>秘密獎勵 ≤ 一次升級</td><td>絕不能放神器或永久 buff，否則玩家會覺得「不探索就虧」。</td></tr>
+    <tr><td>05</td><td>樓層切換不打斷節奏</td><td>樓梯/升降梯/跳台必須 2 秒內完成。沒有過場、沒有 loading。</td></tr>
+    <tr><td>06</td><td>地圖即視覺敘事</td><td>叢林廢墟、實驗室、地下祭壇、霓虹都市 — 每張地圖都是世界的一面。</td></tr>
+    <tr><td>07</td><td>三方協商機制</td><td>Cartograph 任何設計提案必須通過 Systems + CAO + CTO 三方簽字。</td></tr>
+  </table>
+
+  <h3>📁 工作目錄結構（WORKSPACE LAYOUT）</h3>
+  <pre><code>gorilla-gun-survivor/
+├─ src/                       # 既有代碼（保留）
+│  └─ maps/                   # NEW · Cartograph 主場
+├─ public/assets/
+├─ studio/                    # NEW · 內部工作室文件
+│  ├─ vision/                 # 願景與北極星
+│  ├─ bibles/                 # CAO 視覺 / CTO 技術 / Audio 聲音聖經
+│  ├─ sprints/                # 每週 sprint 文件
+│  ├─ briefs/                 # CEO 各部門簡報
+│  └─ decisions/              # CEO 決策紀錄
+├─ marketing/                 # NEW · Scarlet + CMO 領地
+│  └─ promo/                  # 自動產出的行銷素材
+├─ qa/                        # NEW · QA 部門
+├─ performance/               # NEW · Volt 的領地
+└─ openspec/                  # NEW · 100+ 份規格 + 31 位角色 prompt</code></pre>
+
+  <div class="callout info">
+    <strong>📖 完整原始啟動文件（含視覺設計）</strong>：
+    <p style="margin-top:8px;"><a href="./dashboard/原始團隊規劃.html" target="_blank" style="color:#5c2ac6;font-weight:700;">→ 開啟原始 HTML（暗色設計風格）</a></p>
+  </div>
+
+</section>
+
+<!-- ====== TAB 5: DASHBOARD ====== -->
+<section class="tab-panel" id="t-dashboard">
+
+  <h2>📊 進度 Dashboard 怎麼設計</h2>
+
+  <p>Dashboard 是「老闆每天看 1 分鐘就知道現況」的儀表板。本案的設計重點如下，可以套用到任何專案。</p>
+
+  <h3>結構（從上到下）</h3>
+
+  <div style="background:white; border:2px solid #1d2020; border-radius:8px; padding:20px; margin:16px 0;">
+    <div style="background:#5c2ac6; color:white; padding:10px; border-radius:4px; margin:6px 0;">
+      <strong>🎯 現在的狀況</strong>（紫色框、最上方）
+      <p style="font-size:13px;margin-top:6px;">一句話現況 + 完成度百分比 + 卡點說明</p>
+    </div>
+    <div style="background:#f4f1e8; padding:10px; border-radius:4px; margin:6px 0;">
+      <strong>📊 數字儀表</strong>（4 個關鍵數字並排）
+      <p style="font-size:13px;margin-top:6px;color:#666;">35-40% / 8 武器 / 11 怪物 / 15 卡</p>
+    </div>
+    <div style="background:#c3ff3d; border:2px solid #1d2020; padding:10px; border-radius:4px; margin:6px 0;">
+      <strong>👉 你現在要做的事</strong>（綠色大框、最顯眼）
+      <p style="font-size:13px;margin-top:6px;">3 步可複製貼上的指令 + 預估時間</p>
+    </div>
+    <div style="background:#f0fdf4; padding:10px; border-radius:4px; margin:6px 0;">
+      <strong>三欄：✅ 做完 / ⏳ 等決定 / 🔜 接下來</strong>
+      <p style="font-size:13px;margin-top:6px;color:#444;">每欄列 5-8 條</p>
+    </div>
+    <div style="background:#dbeafe; padding:10px; border-radius:4px; margin:6px 0;">
+      <strong>📋 5 階段規劃</strong>（從現在到上架）
+      <p style="font-size:13px;margin-top:6px;color:#1e3a8a;">P0 ✅ → P1 ✅ → P2 ⏳ → P3 ⌛ → P4 ⌛</p>
+    </div>
+    <div style="background:#f4f1e8; padding:10px; border-radius:4px; margin:6px 0;">
+      <strong>📂 細節折疊區（想看再展開）</strong>
+    </div>
+  </div>
+
+  <h3>設計鐵律</h3>
+  <ul>
+    <li><strong>白話為王</strong> — 沒有英文 jargon</li>
+    <li><strong>3 秒看完</strong> — 重要資訊放最上面</li>
+    <li><strong>老闆能做的事在綠框</strong> — 3 步指令直接複製貼上</li>
+    <li><strong>細節折疊</strong> — `&lt;details&gt;` 標籤，想看才展開</li>
+    <li><strong>可重生</strong> — 用 `npm run dashboard:update` 自動產生</li>
+  </ul>
+
+  <div class="callout">
+    <strong>📊 本案實際 dashboard（可玩遊戲後打開看）</strong><br>
+    <a href="./dashboard/terry-progress.html" target="_blank" style="color:#5c2ac6;font-weight:700;font-size:15px;">→ 開啟本案 dashboard</a>
+  </div>
+
+</section>
+
+<!-- ====== TAB 6: 4 週 SPRINT ====== -->
+<section class="tab-panel" id="t-sprint">
+
+  <h2>📅 CEO 開的 4 週 Sprint 路線</h2>
+  <p>本案 CEO Pumpkin King 在 launch brief 開的 4 週 sprint。這套節奏可參考套用到自己的專案。</p>
+
+  <div class="sprint-week">
+    <div class="week-num">W1 · 體檢與聖經建構</div>
+    <div class="week-goal">所有 agent 讀過 DESIGN.md，建立三本聖經</div>
+    <ul style="font-size:13px;">
+      <li>QA Analyst：跑遍既有原型、寫現況報告</li>
+      <li>CAO Raven：產出視覺聖經 v1</li>
+      <li>CTO Circuit：建立技術聖經 + 架構評估</li>
+      <li>Volt：建立 FPS / GC 監控儀表板</li>
+      <li>Cartograph：地圖設計提案 v1（3 種原型）</li>
+      <li>Scarlet：建立行銷素材模板與 prompt 庫</li>
+    </ul>
+    <p style="font-size:12px;color:#888;">GATE: 三本聖經 + 效能基準</p>
+  </div>
+
+  <div class="sprint-week">
+    <div class="week-num">W2 · 地圖原型與優化基線</div>
+    <div class="week-goal">第一張新地圖原型 + 效能基線達標</div>
+    <ul style="font-size:13px;">
+      <li>Cartograph：「廢墟地圖」設計文件完成</li>
+      <li>三方會議（CAO / CTO / Systems）簽字</li>
+      <li>Volt + Gameplay Programmer：子彈池、敵人池重構</li>
+      <li>Scarlet：第一份廢墟地圖宣傳圖產出</li>
+    </ul>
+    <p style="font-size:12px;color:#888;">GATE: 廢墟地圖可玩 + 60fps 達標</p>
+  </div>
+
+  <div class="sprint-week">
+    <div class="week-num">W3 · 內容擴張</div>
+    <div class="week-goal">新增武器 / 怪物 / 第二地圖</div>
+    <ul style="font-size:13px;">
+      <li>Combat + Balance：3 把新武器設計 + 數值</li>
+      <li>Systems + Gameplay：5 種新怪物設計 + AI</li>
+      <li>Cartograph + Env Artist：洞窟地圖</li>
+      <li>SFX + Music：真實音效採購 / 製作開始</li>
+      <li>UI/UX：主選單、結算、暫停重做</li>
+    </ul>
+    <p style="font-size:12px;color:#888;">GATE: 10 把武器 + 15 種怪物 + 2 地圖</p>
+  </div>
+
+  <div class="sprint-week">
+    <div class="week-num">W4 · 第一次重大評估</div>
+    <div class="week-goal">CEO 主持 milestone review</div>
+    <ul style="font-size:13px;">
+      <li>是否仍守住 roguelike 核心？</li>
+      <li>效能 / 美術一致性 / 數值平衡 / 內容多樣性全部審</li>
+      <li>第一支 30 秒 trailer 草案</li>
+      <li>Steam 頁面草稿 v1</li>
+      <li>$15 定價可行性報告</li>
+    </ul>
+    <p style="font-size:12px;color:#888;">GATE: 完整評估報告交給 Terry</p>
+  </div>
+
+</section>
+
+<!-- ====== TAB 7: 範本下載 ====== -->
+<section class="tab-panel" id="t-templates">
+
+  <h2>📎 可複製的範本（點下載按鈕直接拿）</h2>
+
+  <p>下面這些是這套系統的「最小骨架」，<strong>套用到新專案只要下載 → 改字</strong>。</p>
+
+  <div class="callout info">
+    <strong>📌 怎麼用</strong>：點「下載」按鈕會把該 MD 檔下載到你電腦。把整套下載完之後，放到你新專案的對應位置，依文件說明改字即可。
+  </div>
+
+  <h3>🏛️ 專案根設定</h3>
+  <div class="template-row">
+    <span class="path">openspec/project.md</span>
+    <span class="desc">專案根 spec：tech stack、紅線、核心紀律。新專案第一個建。</span>
+    <a href="../openspec/project.md" class="dl-btn" download>↓ 下載</a>
+  </div>
+  <div class="template-row">
+    <span class="path">openspec/AGENTS.md</span>
+    <span class="desc">所有 AI 啟動時必讀的 workflow 指引。</span>
+    <a href="../openspec/AGENTS.md" class="dl-btn" download>↓ 下載</a>
+  </div>
+
+  <h3>👥 C-Suite 角色 prompt（4 位）</h3>
+  <div class="template-row">
+    <span class="path">openspec/roles/c-suite/ceo-pumpkin-king.md</span>
+    <span class="desc">CEO · 統籌全局、紅線守護者。改名字 + 改紅線即可套用。</span>
+    <a href="../openspec/roles/c-suite/ceo-pumpkin-king.md" class="dl-btn" download>↓ 下載</a>
+  </div>
+  <div class="template-row">
+    <span class="path">openspec/roles/c-suite/cao-raven.md</span>
+    <span class="desc">CAO · 美術總監、否決權設計。</span>
+    <a href="../openspec/roles/c-suite/cao-raven.md" class="dl-btn" download>↓ 下載</a>
+  </div>
+  <div class="template-row">
+    <span class="path">openspec/roles/c-suite/cto-circuit.md</span>
+    <span class="desc">CTO · 技術總監、架構守護。</span>
+    <a href="../openspec/roles/c-suite/cto-circuit.md" class="dl-btn" download>↓ 下載</a>
+  </div>
+  <div class="template-row">
+    <span class="path">openspec/roles/c-suite/cmo-harvest.md</span>
+    <span class="desc">CMO · 行銷總監、上架策略。</span>
+    <a href="../openspec/roles/c-suite/cmo-harvest.md" class="dl-btn" download>↓ 下載</a>
+  </div>
+
+  <h3>🌟 關鍵角色 prompt（3 位 NEW HIRE）</h3>
+  <div class="template-row">
+    <span class="path">openspec/roles/programming/volt-ta.md</span>
+    <span class="desc">⚡ Volt · 技術美術 TA。所有 PR 否決權。最有可能直接複用的角色。</span>
+    <a href="../openspec/roles/programming/volt-ta.md" class="dl-btn" download>↓ 下載</a>
+  </div>
+  <div class="template-row">
+    <span class="path">openspec/roles/design/cartograph.md</span>
+    <span class="desc">🗺️ Cartograph · 地圖設計師。30 秒週長鐵律。</span>
+    <a href="../openspec/roles/design/cartograph.md" class="dl-btn" download>↓ 下載</a>
+  </div>
+  <div class="template-row">
+    <span class="path">openspec/roles/marketing/scarlet.md</span>
+    <span class="desc">🎨 Scarlet · 行銷美術。跟著內容自動產素材。</span>
+    <a href="../openspec/roles/marketing/scarlet.md" class="dl-btn" download>↓ 下載</a>
+  </div>
+
+  <h3>📋 系統規格範例</h3>
+  <div class="template-row">
+    <span class="path">openspec/specs/systems/combat-loop.md</span>
+    <span class="desc">核心循環 spec 範例：殺撿升抽撐 5 步紀律</span>
+    <a href="../openspec/specs/systems/combat-loop.md" class="dl-btn" download>↓ 下載</a>
+  </div>
+  <div class="template-row">
+    <span class="path">openspec/specs/systems/performance-budgets.md</span>
+    <span class="desc">效能預算 spec：FPS / 記憶體 / chunk size</span>
+    <a href="../openspec/specs/systems/performance-budgets.md" class="dl-btn" download>↓ 下載</a>
+  </div>
+  <div class="template-row">
+    <span class="path">openspec/specs/systems/vfx-system.md</span>
+    <span class="desc">VFX 系統 spec：粒子預算 + 色彩規範</span>
+    <a href="../openspec/specs/systems/vfx-system.md" class="dl-btn" download>↓ 下載</a>
+  </div>
+
+  <h3>📬 自動化骨架</h3>
+  <div class="template-row">
+    <span class="path">studio/mailbox/README.md</span>
+    <span class="desc">信箱 protocol：inbox / outbox / broadcast 三資料夾規範</span>
+    <a href="../studio/mailbox/README.md" class="dl-btn" download>↓ 下載</a>
+  </div>
+  <div class="template-row">
+    <span class="path">studio/claude-as-codex-loop.md</span>
+    <span class="desc">循環指令檔：scheduled task 每 30 分鐘喚醒時讀的 SOP</span>
+    <a href="../studio/claude-as-codex-loop.md" class="dl-btn" download>↓ 下載</a>
+  </div>
+  <div class="template-row">
+    <span class="path">studio/索引.md</span>
+    <span class="desc">總索引：新對話打開這份就能完整接手</span>
+    <a href="../studio/索引.md" class="dl-btn" download>↓ 下載</a>
+  </div>
+
+  <h3>🎨 範本 + 範例</h3>
+  <div class="template-row">
+    <span class="path">openspec/specs/cards/_TEMPLATE.md</span>
+    <span class="desc">升級卡規格模板</span>
+    <a href="../openspec/specs/cards/_TEMPLATE.md" class="dl-btn" download>↓ 下載</a>
+  </div>
+  <div class="template-row">
+    <span class="path">openspec/specs/meta-progression/_TEMPLATE.md</span>
+    <span class="desc">META 升級條規格模板</span>
+    <a href="../openspec/specs/meta-progression/_TEMPLATE.md" class="dl-btn" download>↓ 下載</a>
+  </div>
+
+  <div class="callout warning" style="margin-top: 24px;">
+    <strong>實務建議</strong>：套用到新專案時，先下載 <code>project.md</code> + <code>ceo-pumpkin-king.md</code> + <code>volt-ta.md</code> + <code>索引.md</code> + 一份 <code>_TEMPLATE.md</code>，跑 1 週看狀況，再慢慢補其他角色。<strong>不要一次到位</strong>，會被細節淹死。
+  </div>
+
+  <h3>🌐 直接逛 GitHub repo</h3>
+  <p>所有檔案的最新版都在 GitHub：</p>
+  <a href="https://github.com/terry12260201/gorilla-gun-survivor" target="_blank" class="dl-btn" style="display:inline-block;background:#1d2020;color:#c3ff3d;padding:12px 20px;text-decoration:none;border-radius:6px;font-weight:700;margin-top:8px;">→ 開啟 GitHub repo</a>
+
+</section>
+
+<!-- ====== MODAL for role prompt ====== -->
+<div class="modal-bg" id="role-modal" onclick="if(event.target===this)closeRole()">
+  <div class="modal">
+    <button class="close" onclick="closeRole()">×</button>
+    <div id="role-content">載入中...</div>
+  </div>
+</div>
+
+<footer>
+  Gorilla Gun Survivor 案例 · Terry @ 南瓜虛擬科技<br>
+  本文件由 Claude (Cowork mode) 在 Terry 指示下撰寫 · 持續更新中<br>
+  教學 + 遊戲 + 團隊 + 啟動文件 + Dashboard + Sprint + 範本下載 — 七合一分頁版
+</footer>
+
+<script>
+  // Tab switching
+  const buttons = document.querySelectorAll('.tab-btn');
+  const panels = document.querySelectorAll('.tab-panel');
+  buttons.forEach(btn => {
+    btn.addEventListener('click', () => {
+      buttons.forEach(b => b.classList.remove('active'));
+      panels.forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById(btn.dataset.tab).classList.add('active');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  });
+
+  // Role modal (簡單摘要 — 完整 prompt 點下載連結看)
+  const ROLE_SUMMARIES = {
+    ceo: { name: '🎃 Pumpkin King · CEO', body: '統籌全局、守住 roguelike survivor 核心紀律。否決任何違反「殺撿升抽撐」核心循環的提案。Terry 不在場時，用 Terry 的意志拍板。<br><br>📥 完整 prompt：<a href="../openspec/roles/c-suite/ceo-pumpkin-king.md" download>下載 ceo-pumpkin-king.md</a>' },
+    cao: { name: '🎨 Raven · CAO', body: '美術總監。所有 art 產出（concept / 3D / VFX / UI / 行銷素材）必須通過簽字。守住 GGS 的視覺一致性。<br><br>📥 完整 prompt：<a href="../openspec/roles/c-suite/cao-raven.md" download>下載 cao-raven.md</a>' },
+    cto: { name: '⚙️ Circuit · CTO', body: '技術總監。守 Three.js + Vite + TS 純手刻架構不腐爛。仲裁所有跨模組程式爭議。<br><br>📥 完整 prompt：<a href="../openspec/roles/c-suite/cto-circuit.md" download>下載 cto-circuit.md</a>' },
+    cmo: { name: '📢 Harvest · CMO', body: '行銷總監。帶 GGS 從 GitHub Pages prototype 走向 Steam + itch.io 雙軌上架。守版權邊界。<br><br>📥 完整 prompt：<a href="../openspec/roles/c-suite/cmo-harvest.md" download>下載 cmo-harvest.md</a>' },
+    systems: { name: '📐 Systems Designer', body: 'GGS 核心遊戲循環的設計者。守住「殺撿升抽撐」5 步順序，仲裁所有跨系統設計爭議。<br><br>📥 <a href="../openspec/roles/design/systems-designer.md" download>下載 systems-designer.md</a>' },
+    balance: { name: '📊 Balance Architect', body: 'GGS 所有數值的看守者 — HP / damage / speed / drop rate / XP curve。讓玩家從 0 秒到 15 分鐘都覺得「剛剛好難」。<br><br>📥 <a href="../openspec/roles/design/balance-architect.md" download>下載 balance-architect.md</a>' },
+    combat: { name: '🎯 Combat Designer', body: '讓 GGS 的「殺」這一步爽到尖叫。武器手感、命中回饋、敵人 AI 行為、爆炸/鏈電的時機感。<br><br>📥 <a href="../openspec/roles/design/combat-designer.md" download>下載 combat-designer.md</a>' },
+    narrative: { name: '📖 Narrative Designer', body: '為「為什麼是大猩猩？」找答案。建立 GGS 世界觀，讓玩家在「殺撿升抽撐」之餘有一條輕薄、不打斷遊戲的故事線。<br><br>📥 <a href="../openspec/roles/design/narrative-designer.md" download>下載 narrative-designer.md</a>' },
+    cartograph: { name: '🗺️ Cartograph · NEW HIRE', body: '在不破壞 roguelike 核心的前提下，為地圖注入探索感。30 秒週長鐵律：地圖永遠不能無限大。<br><br>🛑 三方協商：CAO / CTO / Systems 簽字<br><br>📥 <a href="../openspec/roles/design/cartograph.md" download>下載 cartograph.md</a>' },
+    concept: { name: '✏️ Concept Artist', body: '所有 3D 模型製作前的概念圖第一棒。產出 GPT Image 2 prompt + reference sheet。<br><br>📥 <a href="../openspec/roles/art/concept-artist.md" download>下載 concept-artist.md</a>' },
+    '3d': { name: '🧊 3D Specialist', body: '把 Concept Artist 的 reference sheet 變成可在 Three.js 跑的 GLB。低模、低 draw call、有清楚剪影。<br><br>📥 <a href="../openspec/roles/art/3d-specialist.md" download>下載 3d-specialist.md</a>' },
+    anim: { name: '🏃 Animation Director', body: '讓敵人「活起來」— idle / walk / attack / death / reload 等狀態動畫。<br><br>📥 <a href="../openspec/roles/art/animation-director.md" download>下載 animation-director.md</a>' },
+    vfx: { name: '✨ VFX Artist', body: '所有命中、爆炸、發光、軌跡、鏈電的視覺設計者。每個 VFX 必須通過 Volt TA 的 200 粒子預算審。<br><br>📥 <a href="../openspec/roles/art/vfx-artist.md" download>下載 vfx-artist.md</a>' },
+    ui: { name: '🖼️ UI/UX Designer', body: 'HUD、主選單、升等選卡、暫停、結算 — 所有玩家會點到看到的介面。低調、不搶戲、不阻塞遊戲節奏。<br><br>📥 <a href="../openspec/roles/art/ui-ux-designer.md" download>下載 ui-ux-designer.md</a>' },
+    env: { name: '🌍 Environment Artist', body: '地圖視覺風格 — 叢林廢墟、實驗室、地下祭壇、霓虹都市。配合 Cartograph 的功能設計。<br><br>📥 <a href="../openspec/roles/art/environment-artist.md" download>下載 environment-artist.md</a>' },
+    lead: { name: '💻 Lead Programmer', body: 'GGS 程式碼整體架構守護者。整合所有 module。確保程式結構保持手刻 Three.js 應有的乾淨。<br><br>📥 <a href="../openspec/roles/programming/lead-programmer.md" download>下載 lead-programmer.md</a>' },
+    gameplay: { name: '🎮 Gameplay Programmer', body: '把 Systems Designer + Combat Designer 的設計變成可運行的 code。新武器、新敵人、新元素邏輯從這裡實作。<br><br>📥 <a href="../openspec/roles/programming/gameplay-programmer.md" download>下載 gameplay-programmer.md</a>' },
+    web: { name: '🌐 Web Frontend Engineer', body: 'GGS 的 Three.js / WebGL 專家。所有渲染、shader、Three.js API 細節由他主導。<br><br>📥 <a href="../openspec/roles/programming/web-frontend-engineer.md" download>下載 web-frontend-engineer.md</a>' },
+    tools: { name: '🔧 Tools Programmer', body: 'Build pipeline、validator、自動化腳本的守門員。tools/ 目錄是他領地。<br><br>📥 <a href="../openspec/roles/programming/tools-programmer.md" download>下載 tools-programmer.md</a>' },
+    volt: { name: '⚡ Volt · TA · NEW HIRE', body: '讓玩家在第 5 分鐘和第 15 分鐘的 FPS 沒有差異。所有 PR 必須他簽字。<br><br>🛑 否決所有 PR · 粒子預算 ≤ 200 · 桌面 60fps 不掉<br><br>📥 <a href="../openspec/roles/programming/volt-ta.md" download>下載 volt-ta.md</a>' },
+    'audio-dir': { name: '🎼 Audio Director', body: 'GGS 聲音整體願景。目前 100% WebAudio 合成。規劃從合成升級為真實音檔的路線。<br><br>📥 <a href="../openspec/roles/audio/audio-director.md" download>下載 audio-director.md</a>' },
+    music: { name: '🎶 Music Composer', body: '寫 GGS 的主題曲、戰鬥 BGM、boss 音樂、菜單音樂。叢林廢墟 + 失落科技風。<br><br>📥 <a href="../openspec/roles/audio/music-composer.md" download>下載 music-composer.md</a>' },
+    sfx: { name: '💥 SFX Designer', body: '寫所有 one-shot sound effects — 武器射擊、命中、爆炸、升等、撿物、UI 點擊。<br><br>📥 <a href="../openspec/roles/audio/sfx-designer.md" download>下載 sfx-designer.md</a>' },
+    copy: { name: '✍️ Copywriter', body: '所有玩家會看到的文字 — Steam 頁面、社群貼文、武器名/敘述、achievement、trailer 旁白稿。<br><br>📥 <a href="../openspec/roles/marketing/copywriter.md" download>下載 copywriter.md</a>' },
+    trailer: { name: '🎬 Trailer Director', body: 'GGS 30 秒 → 60 秒 → 90 秒 三版 trailer 的導演。從遊戲畫面擷取「最爽 5 秒」串成 hook。<br><br>📥 <a href="../openspec/roles/marketing/trailer-director.md" download>下載 trailer-director.md</a>' },
+    market: { name: '📊 Market Analyst', body: '$15 定價可行性、Steam 同類遊戲分析、社群熱度監控。讓 CMO 的所有決定有數據後盾。<br><br>📥 <a href="../openspec/roles/marketing/market-analyst.md" download>下載 market-analyst.md</a>' },
+    community: { name: '💬 Community Manager', body: '管理 GGS 對外社群（Reddit / X / Discord / itch.io 留言）。回覆玩家、收集 feedback、過濾無建設批評。<br><br>📥 <a href="../openspec/roles/marketing/community-manager.md" download>下載 community-manager.md</a>' },
+    scarlet: { name: '🎨 Scarlet · NEW HIRE', body: '跟隨遊戲內容演進，自動產出宣傳圖。新武器/怪物/地圖一上線就要產出對應的行銷素材。<br><br>🛑 美術審查：CAO Raven 否決權<br><br>📥 <a href="../openspec/roles/marketing/scarlet.md" download>下載 scarlet.md</a>' },
+    qa: { name: '🎯 QA Analyst', body: 'GGS QA 領頭。第一個玩每個新 build、最後簽字才能 ship。<br><br>📥 <a href="../openspec/roles/qa/qa-analyst.md" download>下載 qa-analyst.md</a>' },
+    data: { name: '📈 Data Scientist', body: '玩家行為數據分析。一旦上線後，分析「玩家死在哪、用什麼武器、選什麼卡、活多久」找出平衡漏洞。<br><br>📥 <a href="../openspec/roles/qa/data-scientist.md" download>下載 data-scientist.md</a>' },
+    ux: { name: '♿ UX Tester', body: '非標準玩家視角的測試 — 色盲、聽障、單手玩家、新手第一次摸到 — 是否還能玩懂、玩得爽。<br><br>📥 <a href="../openspec/roles/qa/ux-tester.md" download>下載 ux-tester.md</a>' }
+  };
+
+  function showRole(id) {
+    const r = ROLE_SUMMARIES[id];
+    if (!r) return;
+    document.getElementById('role-content').innerHTML = '<h3>' + r.name + '</h3><p>' + r.body + '</p>';
+    document.getElementById('role-modal').classList.add('show');
+  }
+  function closeRole() {
+    document.getElementById('role-modal').classList.remove('show');
+  }
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeRole(); });
+</script>
+
+</body>
+</html>
+</content>
