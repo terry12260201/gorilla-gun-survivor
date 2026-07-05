@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>交接卡 — 貼給下一個 Claude</title>
+<style>
+  :root{--bg:#111214;--card:#1c1e22;--border:#2e3238;--text:#e8eaed;--muted:#9aa0a8;--accent:#f5a623}
+  @media (prefers-color-scheme: light){:root{--bg:#f6f7f8;--card:#fff;--border:#e3e5e8;--text:#1c1e21;--muted:#6b7178}}
+  *{box-sizing:border-box;margin:0}
+  body{background:var(--bg);color:var(--text);font-family:"PingFang TC","Noto Sans TC",system-ui,sans-serif;padding:1.5rem;line-height:1.6}
+  .wrap{max-width:860px;margin:0 auto}
+  h1{font-size:1.2rem;margin-bottom:.3rem}
+  p.sub{color:var(--muted);font-size:.9rem;margin-bottom:1rem}
+  button{background:var(--accent);color:#111;font-weight:700;font-size:1rem;border:0;border-radius:10px;padding:.7rem 1.4rem;cursor:pointer;margin-bottom:1rem}
+  button:active{transform:scale(.98)}
+  textarea{width:100%;height:60vh;background:var(--card);color:var(--text);border:1px solid var(--border);border-radius:12px;padding:1rem;font-size:.85rem;font-family:ui-monospace,Menlo,Consolas,monospace;resize:vertical}
+  .ok{color:#4cc38a;font-weight:600;margin-left:.8rem}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🎃 交接卡 — 2026-07-05</h1>
+  <p class="sub">開新的 Claude 視窗後，把下面整段貼上當第一句話。按鈕一鍵複製；按鈕失效就點文字框 → 全選 → 複製。</p>
+  <button id="copy">📋 一鍵複製交接文</button><span id="done" class="ok" hidden>已複製 ✓</span>
+  <textarea id="txt" readonly>
+你是南瓜（Nanhung, nanhong@pumpkinvrar.com, 南瓜虛擬科技）的 AI 專案經理，全程繁體中文。接手上一個 session 的工作。
+
+【第一步】到 GitHub repo terry12260201/gorilla-gun-survivor 的分支 claude/project-management-system-7nhr9n，讀 pm/交接-2026-07-05.md（完整交接）和 pm/README.md（系統總綱），讀完回報你理解的現狀與待辦，再開工。
+
+【核心摘要（若暫時讀不到 repo，先靠這段）】
+■ 架構：Jira = 任務唯一事實來源｜Google Docs = 文件層｜Obsidian = 南瓜個人層｜Claude = 膠水，南瓜只做決策。
+■ 已完成（都在上述分支）：四個指令 /pm-radar 問題雷達、/pm-brief 會前簡報、/pm-dispatch 會後派工（建單前必先確認）、/pm-capacity 人力地圖；南瓜中控 hub/index.html（工具卡片站，TOOLS 陣列=註冊表）；會議記錄範本；2026-07-05 真實雷達報告（196 張未完成工單：Idleman 53 張超載、34 張進行中7天沒動、南瓜名下19張待決策、李孟庭11張等合併快空窗）；工具盤點清單 hub/工具盤點-2026-07-05.md。
+■ 連線：Jira cloudId 418b3b93-1cfe-4560-96cc-ad4ce60b04f8（pvrar.atlassian.net）；Google Drive 進度總表 Sheet id 1ggQ0rv550ADf1Wra2uNp3ZylhNP2KyyVujRmkR_7noA；另有 Gmail、日曆、Canva。MCP 呼叫若跳核准視窗，請南瓜選「一律允許」。
+■ 資料同步規則：Claude 雲端容器是暫時的，所有成果必須 commit + push 到分支 claude/project-management-system-7nhr9n 才算存在；不要推到其他分支。
+■ 待辦優先序：
+1. 永久每日雷達排程（create_trigger 每天台北08:00跑 /pm-radar 並 push 報告；上次被「需要核准」擋下，需南瓜按允許）。
+2. 第二大腦同步：建私有 repo pumpkin-second-brain 放 Obsidian vault + 各電腦裝 Obsidian Git 外掛（南瓜尚未建）。
+3. 會議記錄整理器（逐字稿→摘要+#派工行→接 /pm-dispatch）。
+4. 團隊儀表板網頁版（studio/dashboard/pumpkin-mission-control-v3.html 前端現成，改接 Jira 即時資料）。
+5. 虛擬團隊指揮台（openspec/roles/ 已有24+角色prompt，缺入口）。
+  </textarea>
+</div>
+<script>
+const btn=document.getElementById("copy"),txt=document.getElementById("txt"),done=document.getElementById("done");
+btn.onclick=async()=>{
+  try{ await navigator.clipboard.writeText(txt.value); }
+  catch(e){ txt.focus(); txt.select(); document.execCommand("copy"); }
+  done.hidden=false; setTimeout(()=>done.hidden=true,2500);
+};
+</script>
+</body>
+</html>
