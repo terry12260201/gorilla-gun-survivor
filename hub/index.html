@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>南瓜中控 — 南瓜的痛點工具站</title>
+<style>
+  :root{
+    --bg:#111214; --panel:#1a1c1f; --card:#202327; --border:#2e3238;
+    --text:#e8eaed; --muted:#9aa0a8; --accent:#f5a623; --ok:#4cc38a; --plan:#8b8f98;
+  }
+  @media (prefers-color-scheme: light){
+    :root{ --bg:#f6f7f8; --panel:#fff; --card:#fff; --border:#e3e5e8; --text:#1c1e21; --muted:#6b7178; }
+  }
+  *{box-sizing:border-box;margin:0}
+  body{background:var(--bg);color:var(--text);font-family:"PingFang TC","Noto Sans TC",system-ui,sans-serif;line-height:1.55}
+  header{display:flex;align-items:center;gap:.6rem;padding:1rem 1.5rem;border-bottom:1px solid var(--border);background:var(--panel);position:sticky;top:0}
+  header h1{font-size:1.15rem;font-weight:700}
+  header .who{margin-left:auto;color:var(--muted);font-size:.85rem}
+  .layout{display:flex;min-height:calc(100vh - 57px)}
+  nav{width:180px;padding:1.2rem .8rem;border-right:1px solid var(--border);flex-shrink:0}
+  nav h2{font-size:.75rem;color:var(--muted);margin:.8rem .5rem .4rem}
+  nav button{display:block;width:100%;text-align:left;padding:.45rem .6rem;border:0;background:none;color:var(--text);border-radius:8px;cursor:pointer;font-size:.92rem}
+  nav button:hover,nav button.active{background:var(--card)}
+  main{flex:1;padding:1.5rem;max-width:1100px}
+  section{margin-bottom:2.2rem}
+  section>h2{font-size:1rem;margin-bottom:.8rem}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:.9rem}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:1rem;display:flex;flex-direction:column;gap:.35rem;text-decoration:none;color:inherit;transition:border-color .15s}
+  .card:hover{border-color:var(--accent)}
+  .card .name{font-weight:600;display:flex;align-items:center;gap:.4rem}
+  .card .name .arrow{margin-left:auto;color:var(--muted)}
+  .card .desc{color:var(--muted);font-size:.85rem;flex:1}
+  .badge{font-size:.72rem;padding:.1rem .5rem;border-radius:99px;width:fit-content}
+  .badge.ok{background:color-mix(in srgb,var(--ok) 15%,transparent);color:var(--ok)}
+  .badge.plan{background:color-mix(in srgb,var(--plan) 18%,transparent);color:var(--plan)}
+  .badge.cmd{background:color-mix(in srgb,var(--accent) 15%,transparent);color:var(--accent)}
+  .hint{color:var(--muted);font-size:.8rem;margin-top:.5rem}
+  @media (max-width:700px){nav{display:none}}
+</style>
+</head>
+<body>
+<header>
+  <span style="font-size:1.3rem">🎃</span><h1>南瓜中控</h1>
+  <span class="who">nanhong@pumpkinvrar.com</span>
+</header>
+<div class="layout">
+  <nav id="nav">
+    <button class="active" data-cat="*">全部工具</button>
+    <h2>分類</h2>
+  </nav>
+  <main id="main"></main>
+</div>
+
+<script>
+/* ============================================================
+   工具註冊表 —— 要新增工具，只要在這個陣列加一筆。
+   type: "link"  = 外部連結（url）
+         "claude"= Claude Code 指令（cmd；在 gorilla-gun-survivor repo 開 session 輸入）
+         "plan"  = 規劃中（還沒做，先佔位，痛點先寫下來）
+   ============================================================ */
+const TOOLS = [
+  // ── 專案管理（已可用：Claude 指令引擎）─────────────────
+  { cat:"專案管理", name:"問題雷達",   type:"claude", cmd:"/pm-radar",
+    desc:"全公司未完成工單一頁總覽：過期、卡住、待驗收、未派工、每人負載。" },
+  { cat:"專案管理", name:"會前簡報",   type:"claude", cmd:"/pm-brief",
+    desc:"開會前 5 分鐘生成：要決策的事、待驗收、誰快沒工作、建議派工。" },
+  { cat:"專案管理", name:"會後派工",   type:"claude", cmd:"/pm-dispatch",
+    desc:"讀 Obsidian 會議記錄的 #派工 行，確認後自動建 Jira 單。" },
+  { cat:"專案管理", name:"人力地圖",   type:"claude", cmd:"/pm-capacity",
+    desc:"未來兩週誰要空出來、誰超載，提前三天派工而不是當天救火。" },
+  { cat:"專案管理", name:"最新雷達報告", type:"link",
+    url:"../pm/reports/", desc:"歷次問題雷達／會前簡報存檔（pm/reports/）。" },
+
+  // ── 常用入口 ─────────────────────────────────────────
+  { cat:"常用入口", name:"Jira",  type:"link", url:"https://pvrar.atlassian.net",
+    desc:"任務唯一事實來源。" },
+  { cat:"常用入口", name:"團隊進度工作表格", type:"link",
+    url:"https://docs.google.com/spreadsheets/d/1ggQ0rv550ADf1Wra2uNp3ZylhNP2KyyVujRmkR_7noA/edit",
+    desc:"【內部】南瓜團隊進度 Google Sheet（過渡期保留，長期由雷達取代）。" },
+  { cat:"常用入口", name:"Google Drive", type:"link", url:"https://drive.google.com",
+    desc:"企劃與各種公司文件。" },
+
+  // ── 規劃中（痛點先寫下來，想做哪個就跟 Claude 說）────────
+  { cat:"規劃中", name:"會議記錄整理器", type:"plan",
+    desc:"錄音／逐字稿 → AI 摘要決議與 #派工 行，直接餵給會後派工。" },
+  { cat:"規劃中", name:"訊息收件匣", type:"plan",
+    desc:"LINE / Telegram / Email 裡的待辦，24 小時內收斂成 Jira 單，不再靠腦袋記。" },
+  { cat:"規劃中", name:"團隊儀表板（網頁版）", type:"plan",
+    desc:"把問題雷達變成即時網頁：一眼看誰快完成、誰沒工作、哪裡卡住。" },
+  { cat:"規劃中", name:"標案雷達", type:"plan",
+    desc:"政府標案自動掃描＋AI 評分：值不值得投、缺什麼文件。" },
+  { cat:"規劃中", name:"報價計算機", type:"plan",
+    desc:"人天報價試算＋AI 產報價說明書。" },
+];
+
+const nav = document.getElementById("nav"), main = document.getElementById("main");
+const cats = [...new Set(TOOLS.map(t=>t.cat))];
+cats.forEach(c=>{
+  const b=document.createElement("button"); b.textContent=c; b.dataset.cat=c; nav.appendChild(b);
+});
+nav.addEventListener("click",e=>{
+  if(e.target.tagName!=="BUTTON")return;
+  nav.querySelectorAll("button").forEach(b=>b.classList.remove("active"));
+  e.target.classList.add("active"); render(e.target.dataset.cat);
+});
+function card(t){
+  const a=document.createElement(t.type==="link"?"a":"div"); a.className="card";
+  if(t.type==="link"){a.href=t.url;a.target="_blank";a.rel="noopener";}
+  const badge = t.type==="claude" ? `<span class="badge cmd">${t.cmd}</span>`
+              : t.type==="plan"   ? `<span class="badge plan">🚧 規劃中</span>`
+              :                     `<span class="badge ok">連結</span>`;
+  a.innerHTML=`<div class="name">${t.name}<span class="arrow">${t.type==="link"?"↗":"→"}</span></div>
+               <div class="desc">${t.desc}</div>${badge}`;
+  return a;
+}
+function render(cat){
+  main.innerHTML="";
+  cats.filter(c=>cat==="*"||c===cat).forEach(c=>{
+    const sec=document.createElement("section");
+    sec.innerHTML=`<h2>${c}</h2>`;
+    const g=document.createElement("div"); g.className="grid";
+    TOOLS.filter(t=>t.cat===c).forEach(t=>g.appendChild(card(t)));
+    sec.appendChild(g); main.appendChild(sec);
+  });
+  const hint=document.createElement("p"); hint.className="hint";
+  hint.textContent="新增工具：編輯 hub/index.html 裡的 TOOLS 陣列，或直接跟 Claude 說「幫我加一個 XX 工具」。";
+  main.appendChild(hint);
+}
+render("*");
+</script>
+</body>
+</html>
